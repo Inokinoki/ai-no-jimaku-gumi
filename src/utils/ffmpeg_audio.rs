@@ -32,11 +32,17 @@ fn extract_audio_from_video(video_path: &str, audio_path: &str) {
         .unwrap();
     println!("Input: {:?}", input.index());
     println!("Input codec: {}", input.parameters().id().name());
+    let params = input.parameters();
+    let mut sample_rate: u32 = 0;
+    unsafe {
+        // Extract sample rate from input parameters
+        sample_rate = (*params.as_ptr()).sample_rate as u32;
+    }
     let context_decoder =
         ffmpeg::codec::context::Context::from_parameters(input.parameters()).unwrap();
     let mut decoder = context_decoder.decoder().audio().unwrap();
 
-    let mut samples: Vec<i16> = Vec::new();
+    let mut samples: Vec<f32> = Vec::new();
     for (stream, packet) in ictx.packets() {
         if stream.index() == 1 {
             // let mut decoded = Video::empty();
@@ -50,11 +56,13 @@ fn extract_audio_from_video(video_path: &str, audio_path: &str) {
                     "Decoded frame channel layout: {:?}",
                     decoded.channel_layout()
                 );
+                let pts = decoded.pts().unwrap();
                 println!("Decoded frame pts: {:?}", decoded.pts());
                 println!("Decoded frame planes: {:?}", decoded.planes());
                 println!("Decoded frame is packed: {}", decoded.is_packed());
                 let decoded_samples = decoded.data(0);
                 println!("Decoded {} samples", decoded_samples.len());
+                let decoded_samples = decoded.data(0);
                 match decoded.format() {
                     ffmpeg::format::Sample::U8(_) => {
                         // let converted_samples = decoded_samples.iter().map(|&x| x as f32 / 128.0 - 1.0).collect::<Vec<_>>();
@@ -74,23 +82,12 @@ fn extract_audio_from_video(video_path: &str, audio_path: &str) {
                         // samples.push(converted_samples);
                     }
                     ffmpeg::format::Sample::F32(planar) => {
-                        // let converted_samples = decoded_samples.iter().map(|&x| x as f32).collect::<Vec<_>>();
-                        // samples.push(converted_samples);
-                        // Pack decoded_samples into f32 samples
-                        // let mut converted_samples = Vec::new();
-                        // for i in 0..decoded_samples.len() {
-                        //     if i % 4 == 0 {
-                        //         converted_samples.push((
-                        //             decoded_samples[i] << 8 * 3
-                        //             | decoded_samples[i + 1] << 8 * 2
-                        //             | decoded_samples[i + 2] << 8
-                        //             | decoded_samples[i + 3]
-                        //         ) as f32);
-                        //     }
-                        // }
-                        // // Convert the f32 samples to i16, where decoded samples are u8
-                        // let converted_samples = converted_samples.iter().map(|&x| (x * 32768.0) as i16).collect::<Vec<_>>();
-                        // samples.push(converted_samples);
+                        let mut converted_samples = Vec::with_capacity(decoded_samples.len() / 4);
+                        for chunk in decoded_samples.chunks(4) {
+                            let sample = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+                            converted_samples.push(sample);
+                        }
+                        samples.extend(converted_samples.iter());
                     }
                     ffmpeg::format::Sample::F64(planar) => {
                         // let converted_samples = decoded_samples.iter().map(|&x| x as f32).collect::<Vec<_>>();
@@ -108,9 +105,9 @@ fn extract_audio_from_video(video_path: &str, audio_path: &str) {
         audio_path,
         hound::WavSpec {
             channels: 1,
-            sample_rate: 16000,
-            bits_per_sample: 16,
-            sample_format: hound::SampleFormat::Int,
+            sample_rate: sample_rate,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
         },
     )
     .unwrap();
