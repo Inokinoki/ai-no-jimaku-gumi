@@ -1,25 +1,36 @@
 use ffmpeg::format::input;
 use ffmpeg::media::Type;
-use ffmpeg_next::{self as ffmpeg, ffi::AVSampleFormat, format, frame};
+use ffmpeg_next::{self as ffmpeg, codec::Parameters, ffi::AVSampleFormat, format, frame};
 
-// Convert sample format from i32 to AVSampleFormat
-fn get_av_sample_format(format: i32) -> AVSampleFormat {
-    match format {
-        0 => AVSampleFormat::AV_SAMPLE_FMT_NONE,
-        1 => AVSampleFormat::AV_SAMPLE_FMT_U8,
-        2 => AVSampleFormat::AV_SAMPLE_FMT_S16,
-        3 => AVSampleFormat::AV_SAMPLE_FMT_S32,
-        4 => AVSampleFormat::AV_SAMPLE_FMT_FLT,
-        5 => AVSampleFormat::AV_SAMPLE_FMT_DBL,
-        6 => AVSampleFormat::AV_SAMPLE_FMT_U8P,
-        7 => AVSampleFormat::AV_SAMPLE_FMT_S16P,
-        8 => AVSampleFormat::AV_SAMPLE_FMT_S32P,
-        9 => AVSampleFormat::AV_SAMPLE_FMT_FLTP,
-        10 => AVSampleFormat::AV_SAMPLE_FMT_DBLP,
-        11 => AVSampleFormat::AV_SAMPLE_FMT_S64,
-        12 => AVSampleFormat::AV_SAMPLE_FMT_S64P,
-        13 => AVSampleFormat::AV_SAMPLE_FMT_NB,
-        _ => AVSampleFormat::AV_SAMPLE_FMT_NONE,
+// Get sample rate from input parameters
+fn get_sample_rate(params: &Parameters) -> u32 {
+    unsafe {
+        // Extract sample rate from input parameters
+        (*params.as_ptr()).sample_rate as u32
+    }
+}
+
+// Convert sample format from i32 in Parameters to AVSampleFormat
+fn get_av_sample_format(params: &Parameters) -> AVSampleFormat {
+    unsafe {
+        // Extract format from input parameters
+        match (*params.as_ptr()).format {
+            0 => AVSampleFormat::AV_SAMPLE_FMT_NONE,
+            1 => AVSampleFormat::AV_SAMPLE_FMT_U8,
+            2 => AVSampleFormat::AV_SAMPLE_FMT_S16,
+            3 => AVSampleFormat::AV_SAMPLE_FMT_S32,
+            4 => AVSampleFormat::AV_SAMPLE_FMT_FLT,
+            5 => AVSampleFormat::AV_SAMPLE_FMT_DBL,
+            6 => AVSampleFormat::AV_SAMPLE_FMT_U8P,
+            7 => AVSampleFormat::AV_SAMPLE_FMT_S16P,
+            8 => AVSampleFormat::AV_SAMPLE_FMT_S32P,
+            9 => AVSampleFormat::AV_SAMPLE_FMT_FLTP,
+            10 => AVSampleFormat::AV_SAMPLE_FMT_DBLP,
+            11 => AVSampleFormat::AV_SAMPLE_FMT_S64,
+            12 => AVSampleFormat::AV_SAMPLE_FMT_S64P,
+            13 => AVSampleFormat::AV_SAMPLE_FMT_NB,
+            _ => AVSampleFormat::AV_SAMPLE_FMT_NONE,
+        }
     }
 }
 
@@ -54,14 +65,8 @@ fn extract_audio_from_video(video_path: &str, audio_path: &str) {
     println!("Input: {:?}", input.index());
     println!("Input codec: {}", input.parameters().id().name());
     let params = input.parameters();
-    let mut sample_rate: u32 = 0;
-    let mut format: AVSampleFormat = AVSampleFormat::AV_SAMPLE_FMT_NONE;
-    unsafe {
-        // Extract sample rate from input parameters
-        sample_rate = (*params.as_ptr()).sample_rate as u32;
-        // Extract format from input parameters
-        format = get_av_sample_format((*params.as_ptr()).format);
-    }
+    let mut sample_rate: u32 = get_sample_rate(&params);
+    let mut format: AVSampleFormat = get_av_sample_format(&params);
     let context_decoder =
         ffmpeg::codec::context::Context::from_parameters(input.parameters()).unwrap();
     let mut decoder = context_decoder.decoder().audio().unwrap();
