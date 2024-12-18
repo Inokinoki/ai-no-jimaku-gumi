@@ -1,6 +1,11 @@
 use ffmpeg::format::input;
 use ffmpeg::media::Type;
-use ffmpeg_next::{self as ffmpeg, codec::Parameters, ffi::AVSampleFormat, format, frame};
+use ffmpeg_next::{
+    self as ffmpeg,
+    codec::Parameters,
+    ffi::{AVChannelLayout, AVSampleFormat},
+    format, frame,
+};
 
 // Get sample rate from input parameters
 fn get_sample_rate(params: &Parameters) -> u32 {
@@ -31,6 +36,20 @@ fn get_av_sample_format(params: &Parameters) -> AVSampleFormat {
             13 => AVSampleFormat::AV_SAMPLE_FMT_NB,
             _ => AVSampleFormat::AV_SAMPLE_FMT_NONE,
         }
+    }
+}
+
+fn get_av_sample_bitrate(params: &Parameters) -> i64 {
+    unsafe {
+        // Extract bitrate from input parameters
+        (*params.as_ptr()).bit_rate as i64
+    }
+}
+
+fn get_av_sample_channel_layout(params: &Parameters) -> AVChannelLayout {
+    unsafe {
+        // Extract channel layout from input parameters
+        (*params.as_ptr()).ch_layout.clone()
     }
 }
 
@@ -65,8 +84,10 @@ fn extract_audio_from_video(video_path: &str, audio_path: &str) {
     println!("Input: {:?}", input.index());
     println!("Input codec: {}", input.parameters().id().name());
     let params = input.parameters();
-    let mut sample_rate: u32 = get_sample_rate(&params);
-    let mut format: AVSampleFormat = get_av_sample_format(&params);
+    let sample_rate: u32 = get_sample_rate(&params);
+    let format: AVSampleFormat = get_av_sample_format(&params);
+    let bitrate: i64 = get_av_sample_bitrate(&params);
+    let channel_layout = get_av_sample_channel_layout(&params);
     let context_decoder =
         ffmpeg::codec::context::Context::from_parameters(input.parameters()).unwrap();
     let mut decoder = context_decoder.decoder().audio().unwrap();
@@ -113,7 +134,8 @@ fn extract_audio_from_video(video_path: &str, audio_path: &str) {
                     ffmpeg::format::Sample::F32(planar) => {
                         let mut converted_samples = Vec::with_capacity(decoded_samples.len() / 4);
                         for chunk in decoded_samples.chunks(4) {
-                            let sample = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+                            let sample =
+                                f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
                             converted_samples.push(sample);
                         }
                         samples.extend(converted_samples.iter());
@@ -133,7 +155,11 @@ fn extract_audio_from_video(video_path: &str, audio_path: &str) {
     let mut writer = hound::WavWriter::create(
         audio_path,
         hound::WavSpec {
-            channels: 1,
+            channels: if channel_layout.nb_channels < 0 {
+                0
+            } else {
+                channel_layout.nb_channels
+            } as u16,
             sample_rate: sample_rate,
             bits_per_sample: 32,
             sample_format: hound::SampleFormat::Float,
