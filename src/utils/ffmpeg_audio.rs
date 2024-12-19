@@ -79,20 +79,6 @@ fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> 
     converted_samples
 }
 
-// fn convert_to_16khz(input_samples: &[f32], input_sample_rate: i32, output_sample_rate: i32) -> Vec<f32> {
-
-//     let mut output_samples = Vec::new();
-//     let mut input_frame = Audio::new(Type::FLT, input_samples.len() as i32, input_sample_rate);
-//     input_frame.data_mut(0).copy_from_slice(input_samples);
-
-//     let mut output_frame = Audio::new(Type::FLT, input_samples.len() as i32, output_sample_rate);
-
-//     resampler.run(&input_frame, &mut output_frame).unwrap();
-
-//     output_samples.extend_from_slice(output_frame.data(0));
-//     output_samples
-// }
-
 // Get sample rate from input parameters
 fn get_sample_rate(params: &Parameters) -> u32 {
     unsafe {
@@ -169,6 +155,7 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
         .unwrap();
     println!("Input: {:?}", input.index());
     println!("Input codec: {}", input.parameters().id().name());
+    // Prepare input parameters including audio sample rat
     let params = input.parameters();
     let sample_rate: u32 = get_sample_rate(&params);
     let format: AVSampleFormat = get_av_sample_format(&params);
@@ -176,9 +163,21 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
     let channel_layout = get_av_sample_channel_layout(&params);
     let context_decoder =
         ffmpeg::codec::context::Context::from_parameters(input.parameters()).unwrap();
+
+    // Prepare decoder
     let mut decoder = context_decoder.decoder().audio().unwrap();
 
-    let mut samples: Vec<f32> = Vec::new();
+    // Prepare wav writer
+    let mut writer = hound::WavWriter::create(
+        audio_path,
+        hound::WavSpec {
+            channels: 1,
+            sample_rate: output_sample_rate,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        },
+    ).unwrap();
+
     for (stream, packet) in ictx.packets() {
         if stream.index() == 1 {
             // let mut decoded = Video::empty();
@@ -216,28 +215,19 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
                 resampler.run(&decoded, &mut output_frame).unwrap();
                 let resampled_samples = retrieve_f32_audio_samples(&output_frame, plane);
 
-                samples.extend(resampled_samples);
+                for sample in resampled_samples {
+                    writer.write_sample(sample).unwrap();
+                }
+                writer.flush().unwrap();
             }
         }
     }
-
-    let mut writer = hound::WavWriter::create(
-        audio_path,
-        hound::WavSpec {
-            channels: 1,
-            sample_rate: sample_rate,
-            bits_per_sample: 32,
-            sample_format: hound::SampleFormat::Float,
-        },
-    )
-    .unwrap();
-    for sample in samples {
-        writer.write_sample(sample).unwrap();
-    }
+    // Close the writer
+    writer.finalize().unwrap();
 }
 
 #[test]
 fn test_extract_audio_from_video() {
-    extract_audio_from_video("movie.mp4", "audio.wav");
+    extract_audio_from_video("movie.mp4", "audio.wav", 16000);
     assert!(std::path::Path::new("audio.wav").exists());
 }
