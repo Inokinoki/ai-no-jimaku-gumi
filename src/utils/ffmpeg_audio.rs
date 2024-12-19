@@ -7,6 +7,74 @@ use ffmpeg_next::{
     format, frame,
 };
 
+fn convert_to_f32_audio_sample(samples: Vec<u8>, format: format::Sample) -> f32 {
+    match format {
+        ffmpeg::format::Sample::U8(_) => {
+            assert!(samples.len() >= 1);
+            samples[0] as f32 / 255.0
+        }
+        ffmpeg::format::Sample::I16(_) => {
+            assert!(samples.len() >= 2);
+            i16::from_le_bytes([samples[0], samples[1]]) as f32 / 32768.0
+        }
+        ffmpeg::format::Sample::I32(_) => {
+            assert!(samples.len() >= 4);
+            i32::from_le_bytes([samples[0], samples[1], samples[2], samples[3]]) as f32
+                / 2147483648.0
+        }
+        ffmpeg_next::format::Sample::I64(_) => {
+            assert!(samples.len() >= 8);
+            i64::from_le_bytes([
+                samples[0], samples[1], samples[2], samples[3], samples[4], samples[5], samples[6],
+                samples[7],
+            ]) as f32
+                / 9223372036854775808.0
+        }
+        ffmpeg::format::Sample::F32(_) => {
+            assert!(samples.len() >= 4);
+            f32::from_le_bytes([samples[0], samples[1], samples[2], samples[3]])
+        }
+        ffmpeg::format::Sample::F64(_) => {
+            assert!(samples.len() >= 8);
+            f64::from_le_bytes([
+                samples[0], samples[1], samples[2], samples[3], samples[4], samples[5], samples[6],
+                samples[7],
+            ]) as f32
+        }
+        ffmpeg_next::format::Sample::None => {
+            panic!("No sample format found");
+        }
+    }
+}
+
+fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> {
+    // Get the number of samples in the decoded audio
+    let num_samples = decoded.samples();
+    let mut converted_samples = Vec::with_capacity(num_samples);
+    let mut count = 0;
+    let data_len = match decoded.format() {
+        ffmpeg::format::Sample::U8(_) => 1,
+        ffmpeg::format::Sample::I16(_) => 2,
+        ffmpeg::format::Sample::I32(_) => 4,
+        ffmpeg::format::Sample::I64(_) => 8,
+        ffmpeg::format::Sample::F32(_) => 4,
+        ffmpeg::format::Sample::F64(_) => 8,
+        ffmpeg::format::Sample::None => 0,
+    };
+    for chunk in decoded.data(plane).chunks(data_len) {
+        if count >= num_samples {
+            // Finish if we have enough samples
+            break;
+        }
+
+        // Convert the chunk to a f32 sample
+        let sample = convert_to_f32_audio_sample(chunk.to_vec(), decoded.format());
+        converted_samples.push(sample);
+        count += 1;
+    }
+    converted_samples
+}
+
 // Get sample rate from input parameters
 fn get_sample_rate(params: &Parameters) -> u32 {
     unsafe {
@@ -54,7 +122,7 @@ fn get_av_sample_channel_layout(params: &Parameters) -> AVChannelLayout {
 }
 
 // Extract audio from video using ffmpeg-next
-fn extract_audio_from_video(video_path: &str, audio_path: &str) {
+pub fn extract_audio_from_video(video_path: &str, audio_path: &str) {
     ffmpeg::init().unwrap();
 
     let mut ictx = input(video_path).unwrap();
@@ -130,84 +198,9 @@ fn extract_audio_from_video(video_path: &str, audio_path: &str) {
                     decoded_samples.len(),
                     decoded.samples()
                 );
-                let decoded_samples = decoded.data(0);
-                match decoded.format() {
-                    ffmpeg::format::Sample::U8(_) => {
-                        // let converted_samples = decoded_samples.iter().map(|&x| x as f32 / 128.0 - 1.0).collect::<Vec<_>>();
-                        // samples.push(converted_samples);
-                    }
-                    ffmpeg::format::Sample::I16(_) => {
-                        // let converted_samples = decoded_samples.iter().map(|&x| x as f32 / 32768.0).collect::<Vec<_>>();
-                        // samples.push(converted_samples);
-                        // samples.push(decoded_samples as Vec<i16>);
-                    }
-                    ffmpeg::format::Sample::I32(planar) => {
-                        // let converted_samples = decoded_samples.iter().map(|&x| x as f32 / 2147483648.0).collect::<Vec<_>>();
-                        // samples.push(converted_samples);
-                    }
-                    ffmpeg_next::format::Sample::I64(_) => {
-                        // let converted_samples = decoded_samples.iter().map(|&x| x as f32 / 9223372036854775808.0).collect::<Vec<_>>();
-                        // samples.push(converted_samples);
-                    }
-                    ffmpeg::format::Sample::F32(planar) => {
-                        let mut converted_samples = Vec::with_capacity(decoded.samples());
-                        let mut count = 0;
-                        for chunk in decoded_samples.chunks(4) {
-                            if count < decoded.samples() {
-                                // We just pick the first channel for now
-                                count += 1;
-                            } else {
-                                break;
-                            }
-                            let sample =
-                                f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-                            converted_samples.push(sample);
-                        }
-                        samples.extend(converted_samples.iter());
-                    }
-                    ffmpeg::format::Sample::F64(planar) => {
-                        let mut converted_samples = Vec::with_capacity(decoded.samples());
-                        let mut count = 0;
-                        let mut remaining_channels = decoded.channels();
-                        for chunk in decoded_samples.chunks(8) {
-                            match planar {
-                                format::sample::Type::Packed => {
-                                    if count < decoded.samples() {
-                                        if remaining_channels > 0 {
-                                            remaining_channels -= 1;
-                                            continue;
-                                        }
-                                        count += 1;
-                                    } else {
-                                        break;
-                                    }
-                                    let sample = f64::from_le_bytes([
-                                        chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5],
-                                        chunk[6], chunk[7],
-                                    ]);
-                                    converted_samples.push(sample as f32);
-                                    // Reset remaining channels
-                                    remaining_channels = decoded.channels() - 1;
-                                }
-                                format::sample::Type::Planar => {
-                                    if count < decoded.samples() {
-                                        count += 1;
-                                    } else {
-                                        break;
-                                    }
-                                    let sample = f64::from_le_bytes([
-                                        chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5],
-                                        chunk[6], chunk[7],
-                                    ]);
-                                    converted_samples.push(sample as f32);
-                                }
-                            }
-                        }
-                    }
-                    ffmpeg_next::format::Sample::None => {
-                        panic!("No sample format found");
-                    }
-                }
+                let plane = 0;
+                let converted_samples = retrieve_f32_audio_samples(&decoded, plane);
+                samples.extend(converted_samples);
             }
         }
     }
