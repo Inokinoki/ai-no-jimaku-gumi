@@ -1,10 +1,14 @@
 use ffmpeg::format::input;
+use ffmpeg::format::sample::Type as SampleType;
 use ffmpeg::media::Type;
+use ffmpeg::software::resampling::context::Context as Resampler;
 use ffmpeg_next::{
     self as ffmpeg,
     codec::Parameters,
     ffi::{AVChannelLayout, AVSampleFormat},
-    format, frame,
+    format,
+    frame::{self, Audio},
+    util,
 };
 
 fn convert_to_f32_audio_sample(samples: Vec<u8>, format: format::Sample) -> f32 {
@@ -75,6 +79,20 @@ fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> 
     converted_samples
 }
 
+// fn convert_to_16khz(input_samples: &[f32], input_sample_rate: i32, output_sample_rate: i32) -> Vec<f32> {
+
+//     let mut output_samples = Vec::new();
+//     let mut input_frame = Audio::new(Type::FLT, input_samples.len() as i32, input_sample_rate);
+//     input_frame.data_mut(0).copy_from_slice(input_samples);
+
+//     let mut output_frame = Audio::new(Type::FLT, input_samples.len() as i32, output_sample_rate);
+
+//     resampler.run(&input_frame, &mut output_frame).unwrap();
+
+//     output_samples.extend_from_slice(output_frame.data(0));
+//     output_samples
+// }
+
 // Get sample rate from input parameters
 fn get_sample_rate(params: &Parameters) -> u32 {
     unsafe {
@@ -122,7 +140,7 @@ fn get_av_sample_channel_layout(params: &Parameters) -> AVChannelLayout {
 }
 
 // Extract audio from video using ffmpeg-next
-pub fn extract_audio_from_video(video_path: &str, audio_path: &str) {
+pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sample_rate: u32) {
     ffmpeg::init().unwrap();
 
     let mut ictx = input(video_path).unwrap();
@@ -168,39 +186,37 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str) {
             let mut decoded = frame::Audio::empty();
             decoder.send_packet(&packet).unwrap();
             while decoder.receive_frame(&mut decoded).is_ok() {
-                let format = decoded.format();
-                unsafe {
-                    println!(
-                        "Decoded frame line size: {:?}",
-                        (*decoded.as_ptr()).linesize[0]
-                    );
-                }
+                // Create resampler
+                let mut resampler = Resampler::get(
+                    decoded.format(),
+                    decoded.channel_layout(),
+                    decoded.rate(),
+                    format::Sample::F32(SampleType::Planar),
+                    util::channel_layout::ChannelLayout::MONO,
+                    output_sample_rate,
+                )
+                .unwrap();
 
-                println!("Decoded frame format: {:?}", decoded.format());
-                println!("Decoded frame channels: {:?}", decoded.channels());
-                println!("Decoded frame duration: {}", decoded.packet().duration);
-                println!("Decoded frame position: {}", decoded.packet().position);
-                println!("Decoded frame size: {}", decoded.packet().size);
-                println!(
-                    "Decoded frame channel layout: {:?}",
-                    decoded.channel_layout()
+                // Create output frame
+                let mut output_frame = Audio::new(
+                    resampler.output().format,
+                    decoded.samples(),
+                    resampler.output().channel_layout,
                 );
-                let pts = decoded.pts().unwrap();
-                println!("Decoded frame pts: {:?}", decoded.pts());
-                println!("Decoded frame planes: {:?}", decoded.planes());
-                println!("Decoded frame is packed: {}", decoded.is_packed());
-                for i in 0..decoded.channels() as usize {
-                    println!("\tDecoded frame data size: {:?}", decoded.data(i).len());
-                }
-                let decoded_samples = decoded.data(0);
+
+                // Currently only support one plane
+                let plane = 0;
+                let decoded_samples = decoded.data(plane);
                 println!(
                     "Decoded {} samples {}",
                     decoded_samples.len(),
                     decoded.samples()
                 );
-                let plane = 0;
-                let converted_samples = retrieve_f32_audio_samples(&decoded, plane);
-                samples.extend(converted_samples);
+                // Convert to the given sample rate
+                resampler.run(&decoded, &mut output_frame).unwrap();
+                let resampled_samples = retrieve_f32_audio_samples(&output_frame, plane);
+
+                samples.extend(resampled_samples);
             }
         }
     }
@@ -208,7 +224,7 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str) {
     let mut writer = hound::WavWriter::create(
         audio_path,
         hound::WavSpec {
-            channels: if channel_layout.nb_channels < 0 { 0 } else { 1 } as u16,
+            channels: 1,
             sample_rate: sample_rate,
             bits_per_sample: 32,
             sample_format: hound::SampleFormat::Float,
