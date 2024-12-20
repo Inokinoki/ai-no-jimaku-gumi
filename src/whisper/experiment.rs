@@ -62,7 +62,12 @@ pub fn extract_from_f32_16khz_wav_audio(model_path: &str, wav_path: &str, langua
         let end_timestamp = state
             .full_get_segment_t1(i)
             .expect("failed to get segment end timestamp");
-        println!("[{} - {}]: {}", start_timestamp, end_timestamp, segment);
+        println!(
+            "[{} - {}]: {}",
+            start_timestamp as f32 / 100.,
+            end_timestamp as f32 / 100.,
+            segment
+        );
     }
 }
 

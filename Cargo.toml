@@ -5,8 +5,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.5.23", features = ["derive"] }
 ffmpeg-next = "7.1.0"
 hound = "3.5.1"
+tempfile = "3.14.0"
 whisper-rs = "0.13.2"
 
 [dev-dependencies]

@@ -176,7 +176,8 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
             bits_per_sample: 32,
             sample_format: hound::SampleFormat::Float,
         },
-    ).unwrap();
+    )
+    .unwrap();
 
     for (stream, packet) in ictx.packets() {
         if stream.index() == 1 {
