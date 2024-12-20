@@ -3,9 +3,9 @@ wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
 */
 
 use hound;
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState};
 
-pub fn extract_from_f32_16khz_wav_audio(model_path: &str, wav_path: &str, language: &str) {
+pub fn extract_from_f32_16khz_wav_audio(model_path: &str, wav_path: &str, language: &str) -> WhisperState {
     let samples: Vec<f32> = hound::WavReader::open(wav_path)
         .unwrap()
         .into_samples::<f32>()
@@ -69,6 +69,8 @@ pub fn extract_from_f32_16khz_wav_audio(model_path: &str, wav_path: &str, langua
             segment
         );
     }
+
+    state
 }
 
 #[test]

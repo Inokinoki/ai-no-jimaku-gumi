@@ -4,7 +4,6 @@ mod utils;
 mod whisper;
 
 use tempfile::TempDir;
-use utils::ffmpeg_audio::extract_audio_from_video;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -40,8 +39,8 @@ fn main() {
     let tmp_dir = TempDir::new().unwrap();
     let tmp_path = tmp_dir.path().join("audio.wav");
     let tmp_path_str = tmp_path.as_os_str().to_str().unwrap();
-    extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
-    whisper::experiment::extract_from_f32_16khz_wav_audio(
+    utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
+    let _state = whisper::experiment::extract_from_f32_16khz_wav_audio(
         "ggml-tiny.bin",
         tmp_path_str,
         &source_language,
