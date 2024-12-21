@@ -25,6 +25,46 @@ struct Args {
     /// (example: "en")
     #[arg(short, long, default_value = "en")]
     target_language: String,
+
+    /// Video start time
+    #[arg(long, default_value = "0")]
+    start_time: usize,
+
+    /// Video end time
+    #[arg(long, default_value = "0")]
+    end_time: usize,
+
+    /// Subtitle backend
+    /// (default: "srt")
+    /// (possible values: "srt", "container", "embedded")
+    /// (example: "srt")
+    /// (long_about: "Subtitle backend to use")
+    #[arg(long, default_value = "srt")]
+    subtitle_backend: String,
+
+    /// Subtitle output path (if srt)
+    /// (default: "output.srt")
+    /// (example: "output.srt")
+    /// (long_about: "Subtitle output path (if srt)")
+    #[arg(long, default_value = "output.srt")]
+    subtitle_output_path: String,
+
+    /// Translator backend
+    /// (default: "openai")
+    /// (possible values: "google", "openai")
+    /// (example: "google")
+    /// (long_about: "Translator backend to use")
+    #[arg(long, default_value = "openai")]
+    translator_backend: String,
+
+    /// Subtitle source
+    /// (default: "audio")
+    /// (possible values: "audio", "container", "ocr")
+    /// (example: "audio")
+    /// (long_about: "Subtitle source to use")
+    /// (long_about: "Subtitle source to use")
+    #[arg(long, default_value = "audio")]
+    subtitle_source: String,
 }
 
 fn main() {
