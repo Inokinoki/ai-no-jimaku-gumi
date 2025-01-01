@@ -3,13 +3,13 @@ use crate::output::Subtitle;
 use std::fs::File;
 use std::io::Write;
 
-pub(crate) struct SrtSubTitleExporter {
+pub(crate) struct SrtSubtitleExporter {
     pub file: File,
 }
 
-impl SrtSubTitleExporter {
-    pub fn new(file: File) -> SrtSubTitleExporter {
-        SrtSubTitleExporter { file }
+impl SrtSubtitleExporter {
+    pub fn new(file: File) -> SrtSubtitleExporter {
+        SrtSubtitleExporter { file }
     }
 }
 
@@ -23,7 +23,7 @@ fn format_time(time: f32) -> String {
     )
 }
 
-impl OutputSubtitles for SrtSubTitleExporter {
+impl OutputSubtitles for SrtSubtitleExporter {
     fn output_subtitles(&mut self, subtitles: Vec<Subtitle>) {
         let mut srt = String::new();
         for (i, subtitle) in subtitles.iter().enumerate() {
@@ -50,7 +50,7 @@ fn test_output_subtitles() {
     let tmp_dir = TempDir::new().unwrap();
     let tmp_path = tmp_dir.path().join("test.srt");
     let file = File::create(tmp_path).unwrap();
-    let mut exporter = SrtSubTitleExporter::new(file);
+    let mut exporter = SrtSubtitleExporter::new(file);
     let subtitles = vec![
         Subtitle {
             start: 0.0,

@@ -97,7 +97,7 @@ fn main() {
     if args.subtitle_backend == "srt" {
         let tmp_path = args.subtitle_output_path;
         let file = std::fs::File::create(tmp_path).unwrap();
-        let mut exporter = output::srt::SrtSubTitleExporter::new(file);
+        let mut exporter = output::srt::SrtSubtitleExporter::new(file);
         exporter.output_subtitles(subtitles);
     } else {
         println!("Unsupported subtitle backend now");
