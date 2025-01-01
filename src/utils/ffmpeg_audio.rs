@@ -140,14 +140,6 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
     println!("Metadata: {:?}", ictx.metadata());
     let format = ictx.format();
     println!("Format: {} {}", format.name(), format.description());
-    format
-        .extensions()
-        .iter()
-        .for_each(|ext| println!("Format extension: {}", ext));
-    format
-        .mime_types()
-        .iter()
-        .for_each(|mime| println!("Format MIME type: {}", mime));
     let input = ictx
         .streams()
         .best(Type::Audio)
@@ -155,12 +147,6 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
         .unwrap();
     println!("Input: {:?}", input.index());
     println!("Input codec: {}", input.parameters().id().name());
-    // Prepare input parameters including audio sample rat
-    let params = input.parameters();
-    let sample_rate: u32 = get_sample_rate(&params);
-    let format: AVSampleFormat = get_av_sample_format(&params);
-    let bitrate: i64 = get_av_sample_bitrate(&params);
-    let channel_layout = get_av_sample_channel_layout(&params);
     let context_decoder =
         ffmpeg::codec::context::Context::from_parameters(input.parameters()).unwrap();
 
@@ -206,12 +192,6 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
 
                 // Currently only support one plane
                 let plane = 0;
-                let decoded_samples = decoded.data(plane);
-                println!(
-                    "Decoded {} samples {}",
-                    decoded_samples.len(),
-                    decoded.samples()
-                );
                 // Convert to the given sample rate
                 resampler.run(&decoded, &mut output_frame).unwrap();
                 let resampled_samples = retrieve_f32_audio_samples(&output_frame, plane);
