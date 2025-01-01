@@ -3,8 +3,7 @@ use ffmpeg::format::sample::Type as SampleType;
 use ffmpeg::media::Type;
 use ffmpeg::software::resampling::context::Context as Resampler;
 use ffmpeg_next::{
-    self as ffmpeg,
-    format,
+    self as ffmpeg, format,
     frame::{self, Audio},
     util,
 };
