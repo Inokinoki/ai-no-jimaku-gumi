@@ -3,9 +3,15 @@ wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
 */
 
 use hound;
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState};
+use whisper_rs::{
+    FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState,
+};
 
-pub fn extract_from_f32_16khz_wav_audio(model_path: &str, wav_path: &str, language: &str) -> WhisperState {
+pub fn extract_from_f32_16khz_wav_audio(
+    model_path: &str,
+    wav_path: &str,
+    language: &str,
+) -> WhisperState {
     let samples: Vec<f32> = hound::WavReader::open(wav_path)
         .unwrap()
         .into_samples::<f32>()
@@ -47,28 +53,6 @@ pub fn extract_from_f32_16khz_wav_audio(model_path: &str, wav_path: &str, langua
     state
         .full(params, &samples[..])
         .expect("failed to run model");
-
-    // fetch the results
-    let num_segments = state
-        .full_n_segments()
-        .expect("failed to get number of segments");
-    for i in 0..num_segments {
-        let segment = state
-            .full_get_segment_text(i)
-            .expect("failed to get segment");
-        let start_timestamp = state
-            .full_get_segment_t0(i)
-            .expect("failed to get segment start timestamp");
-        let end_timestamp = state
-            .full_get_segment_t1(i)
-            .expect("failed to get segment end timestamp");
-        println!(
-            "[{} - {}]: {}",
-            start_timestamp as f32 / 100.,
-            end_timestamp as f32 / 100.,
-            segment
-        );
-    }
 
     state
 }
