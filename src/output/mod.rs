@@ -1,3 +1,4 @@
+pub mod ffmpeg_subtitle;
 pub mod srt;
 pub mod whisper_state;
 
