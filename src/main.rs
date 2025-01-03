@@ -1,5 +1,6 @@
 use clap::Parser;
 
+mod translate;
 mod output;
 mod utils;
 mod whisper;
