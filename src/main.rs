@@ -1,7 +1,9 @@
 use clap::Parser;
 
-mod translate;
+use tokio;
+
 mod output;
+mod translate;
 mod utils;
 mod whisper;
 
@@ -53,18 +55,17 @@ struct Args {
     subtitle_output_path: String,
 
     /// Translator backend
-    /// (default: "openai")
-    /// (possible values: "google", "openai")
+    /// (default: "deepl")
+    /// (possible values: "deepl", "google", "openai")
     /// (example: "google")
     /// (long_about: "Translator backend to use")
-    #[arg(long, default_value = "openai")]
+    #[arg(long, default_value = "deepl")]
     translator_backend: String,
 
     /// Subtitle source
     /// (default: "audio")
     /// (possible values: "audio", "container", "ocr")
     /// (example: "audio")
-    /// (long_about: "Subtitle source to use")
     /// (long_about: "Subtitle source to use")
     #[arg(long, default_value = "audio")]
     subtitle_source: String,
@@ -74,8 +75,7 @@ fn main() {
     let args = Args::parse();
     let input_video_path = args.input_video_path;
     let source_language = args.source_language;
-    // TODO: use in the future
-    let _target_language = args.target_language;
+    let target_language = args.target_language;
 
     println!("Hello, AI no jimaku gumi!");
 
@@ -83,15 +83,38 @@ fn main() {
     let tmp_path = tmp_dir.path().join("audio.wav");
     let tmp_path_str = tmp_path.as_os_str().to_str().unwrap();
     utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
-    let _state = whisper::experiment::extract_from_f32_16khz_wav_audio(
+    let state = whisper::experiment::extract_from_f32_16khz_wav_audio(
         "ggml-tiny.bin",
         tmp_path_str,
         &source_language,
     );
 
-    let subtitles = output::whisper_state::create_subtitle_from_whisper_state(&_state);
+    let mut subtitles = utils::whisper_state::create_subtitle_from_whisper_state(&state);
     if subtitles.is_empty() {
         println!("No subtitles found");
+        return;
+    }
+
+    if args.translator_backend == "deepl" {
+        let deepl_api_key = std::env::var("DEEPL_API_KEY").unwrap();
+        if deepl_api_key.is_empty() {
+            println!("DEEPL_API_KEY is not set");
+            return;
+        }
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        subtitles.iter_mut().for_each(|s| {
+            s.text = rt
+                .block_on(translate::deepl::translate_text(
+                    deepl_api_key.as_str(),
+                    vec![s.text.as_str()],
+                    target_language.as_str(),
+                    Some(source_language.as_str()),
+                ))
+                .unwrap();
+        });
+    } else {
+        println!("Unsupported translator backend now");
         return;
     }
 
@@ -102,5 +125,6 @@ fn main() {
         exporter.output_subtitles(subtitles);
     } else {
         println!("Unsupported subtitle backend now");
+        return;
     }
 }
