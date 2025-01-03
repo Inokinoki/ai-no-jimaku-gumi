@@ -1,9 +1,11 @@
 use clap::Parser;
 
 mod translate;
+mod output;
 mod utils;
 mod whisper;
 
+use output::OutputSubtitles;
 use tempfile::TempDir;
 
 #[derive(Parser, Debug)]
@@ -86,4 +88,19 @@ fn main() {
         tmp_path_str,
         &source_language,
     );
+
+    let subtitles = output::whisper_state::create_subtitle_from_whisper_state(&_state);
+    if subtitles.is_empty() {
+        println!("No subtitles found");
+        return;
+    }
+
+    if args.subtitle_backend == "srt" {
+        let tmp_path = args.subtitle_output_path;
+        let file = std::fs::File::create(tmp_path).unwrap();
+        let mut exporter = output::srt::SrtSubtitleExporter::new(file);
+        exporter.output_subtitles(subtitles);
+    } else {
+        println!("Unsupported subtitle backend now");
+    }
 }
