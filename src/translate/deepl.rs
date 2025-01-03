@@ -1,4 +1,3 @@
-
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -63,15 +62,37 @@ pub async fn translate_text(
     let base_url =
         std::env::var("DEEPL_API_URL").unwrap_or("https://api-free.deepl.com".to_string());
     let path_url = std::env::var("DEEPL_API_URL_PATH").unwrap_or("/v2/translate".to_string());
+    let deepl_source_lang = get_deepl_source_language(source_lang);
+    let deepl_target_lang = get_deepl_target_language(target_lang);
     _translate_text(
         &base_url,
         &path_url,
         api_key,
         texts,
-        target_lang,
-        source_lang,
+        deepl_target_lang.as_str(),
+        Some(deepl_source_lang.as_str()),
     )
     .await
+}
+
+fn get_deepl_source_language(source_lang: Option<&str>) -> String {
+    if let Some(lang) = source_lang {
+        lang.to_uppercase()
+    } else {
+        "EN".to_string()
+    }
+}
+
+fn get_deepl_target_language(target_lang: &str) -> String {
+    // Check https://developers.deepl.com/docs/resources/supported-languages#target-languages
+    let lang = target_lang.to_uppercase();
+    if lang == "ZH" {
+        "ZH-HANS".to_string()
+    } else if lang == "TW" || lang == "ZH-TW" {
+        "ZH-HANT".to_string()
+    } else {
+        lang
+    }
 }
 
 #[cfg(test)]

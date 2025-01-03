@@ -1,6 +1,6 @@
 use whisper_rs::WhisperState;
 
-use crate::output::Subtitle;
+use super::Subtitle;
 
 pub fn create_subtitle_from_whisper_state(state: &WhisperState) -> Vec<Subtitle> {
     let num_segments = state
