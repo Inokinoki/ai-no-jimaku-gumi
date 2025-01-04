@@ -24,7 +24,7 @@ fn format_time(time: f32) -> String {
 }
 
 impl OutputSubtitles for SrtSubtitleExporter {
-    fn output_subtitles(&mut self, subtitles: Vec<Subtitle>) {
+    fn output_subtitles(&mut self, subtitles: &Vec<Subtitle>) {
         let mut srt = String::new();
         for (i, subtitle) in subtitles.iter().enumerate() {
             srt.push_str(&(i + 1).to_string());
@@ -63,7 +63,7 @@ fn test_output_subtitles() {
             text: "Goodbye, world!".to_string(),
         },
     ];
-    exporter.output_subtitles(subtitles);
+    exporter.output_subtitles(&subtitles);
 
     let tmp_path = tmp_dir.path().join("test.srt");
     let mut file = File::open(tmp_path).unwrap();
