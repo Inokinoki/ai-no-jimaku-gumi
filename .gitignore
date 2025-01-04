@@ -1,3 +1,4 @@
 /target
 # Mac OS
 .DS_Store
+ggml-*.bin
