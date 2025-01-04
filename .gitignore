@@ -1,4 +1,5 @@
-/target
+target
 # Mac OS
 .DS_Store
 ggml-*.bin
+*.srt
