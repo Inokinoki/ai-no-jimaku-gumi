@@ -52,12 +52,26 @@ Options:
           Translator backend (default: "deepl") (possible values: "deepl", "google", "openai") (example: "google") (long_about: "Translator backend to use") [default: deepl]
       --subtitle-source <SUBTITLE_SOURCE>
           Subtitle source (default: "audio") (possible values: "audio", "container", "ocr") (example: "audio") (long_about: "Subtitle source to use") [default: audio]
+  -m, --model-name <MODEL_NAME>
+          [default: gpt-4o]
+  -a, --api-base <API_BASE>
+          [default: ]
+  -p, --prompt <PROMPT>
+          [default: ]
   -h, --help
           Print help
   -V, --version
           Print version
 ```
 
-We are currently supporting only `deepl` translation and `srt` export.
+We are currently supporting only `deepl, llm` translation and `srt` export.
 
 Please provide your own DeepL API key in `DEEPL_API_KEY` env, and `DEEPL_API_URL=https://api.deepl.com` if you are using the paid API version.
+
+if you are using llm translate please refer the repo [rust-genai](https://github.com/jeremychone/rust-genai) for more detail
+
+e.g.
+```cli
+export CUSTOM_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxx
+./target/debug/ainojimakugumi --input-video-path one.webm --api-base https://sssss.com/v1/ --translator-backend llm --prompt 'translate this to English' --model-name 'gpt-4o-mini'
+```
