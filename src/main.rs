@@ -7,6 +7,9 @@ mod translate;
 mod utils;
 mod whisper;
 
+use genai::adapter::AdapterKind;
+use genai::resolver::{AuthData, Endpoint, ServiceTargetResolver};
+use genai::{Client, ModelIden, ServiceTarget};
 use output::OutputSubtitles;
 use tempfile::TempDir;
 
@@ -30,6 +33,15 @@ struct Args {
     /// (example: "en")
     #[arg(short, long, default_value = "en")]
     target_language: String,
+
+    #[arg(short, long, default_value = "gpt-4o")]
+    model_name: String,
+
+    #[arg(short, long, default_value = "")]
+    api_base: String,
+
+    #[arg(short, long, default_value = "")]
+    prompt: String,
 
     /// Video start time
     #[arg(long, default_value = "0")]
@@ -110,27 +122,73 @@ fn main() {
         exporter.output_subtitles(&subtitles);
     }
 
-    if args.translator_backend == "deepl" {
-        let deepl_api_key = std::env::var("DEEPL_API_KEY").unwrap();
-        if deepl_api_key.is_empty() {
-            println!("DEEPL_API_KEY is not set");
+    match args.translator_backend.as_str() {
+        "deepl" => {
+            let deepl_api_key = std::env::var("DEEPL_API_KEY").unwrap();
+            if deepl_api_key.is_empty() {
+                println!("DEEPL_API_KEY is not set");
+                return;
+            }
+
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            subtitles.iter_mut().for_each(|s| {
+                s.text = rt
+                    .block_on(translate::deepl::translate_text(
+                        deepl_api_key.as_str(),
+                        vec![s.text.as_str()],
+                        target_language.as_str(),
+                        Some(source_language.as_str()),
+                    ))
+                    .unwrap();
+            });
+        }
+        "llm" => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let model_name = args.model_name.clone();
+            let api_base = args.api_base;
+            let model_name_clone = model_name.clone();
+
+            let client = if !api_base.is_empty() {
+                // -- Build an auth_resolver and the AdapterConfig
+                // link https://github.com/jeremychone/rust-genai/blob/main/examples/c06-target-resolver.rs
+                let target_resolver = ServiceTargetResolver::from_resolver_fn(
+                    move | _service_target: ServiceTarget| -> Result<ServiceTarget, genai::resolver::Error> {
+                        let endpoint = Endpoint::from_owned(api_base.clone());
+                        let auth = AuthData::from_env("CUSTOM_API_KEY");
+                        let model = ModelIden::new(AdapterKind::OpenAI, model_name_clone);
+                        Ok(ServiceTarget { endpoint, auth, model })
+                    },
+                );
+                Client::builder()
+                    .with_service_target_resolver(target_resolver)
+                    .build()
+            } else {
+                Client::default()
+            };
+            let system_prompt = if !args.prompt.is_empty() {
+                args.prompt.clone()
+            } else {
+                format!(
+                    "Translate the following text. to language {}",
+                    &target_language
+                )
+            };
+            subtitles.iter_mut().for_each(|s| {
+                s.text = rt
+                    .block_on(translate::llm::translate_text(
+                        &client,
+                        &model_name,
+                        &system_prompt,
+                        vec![s.text.as_str()],
+                    ))
+                    .unwrap();
+            });
+        }
+        // more translators can be added here
+        _ => {
+            println!("Unsupported translator backend now");
             return;
         }
-
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        subtitles.iter_mut().for_each(|s| {
-            s.text = rt
-                .block_on(translate::deepl::translate_text(
-                    deepl_api_key.as_str(),
-                    vec![s.text.as_str()],
-                    target_language.as_str(),
-                    Some(source_language.as_str()),
-                ))
-                .unwrap();
-        });
-    } else {
-        println!("Unsupported translator backend now");
-        return;
     }
 
     if args.subtitle_backend == "srt" {
