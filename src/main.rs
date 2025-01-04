@@ -69,6 +69,13 @@ struct Args {
     /// (long_about: "Subtitle source to use")
     #[arg(long, default_value = "audio")]
     subtitle_source: String,
+
+    /// Original subtitle SRT file path
+    /// (default: "")
+    /// (example: "origin.srt")
+    /// (long_about: "Original subtitle path to save the transcripted subtitle as SRT")
+    #[arg(long, default_value = "")]
+    original_subtitle_path: String,
 }
 
 fn main() {
@@ -93,6 +100,14 @@ fn main() {
     if subtitles.is_empty() {
         println!("No subtitles found");
         return;
+    }
+
+    if !args.original_subtitle_path.is_empty() {
+        // Save original subtitles
+        let tmp_path = args.original_subtitle_path;
+        let file = std::fs::File::create(tmp_path).unwrap();
+        let mut exporter = output::srt::SrtSubtitleExporter::new(file);
+        exporter.output_subtitles(&subtitles);
     }
 
     if args.translator_backend == "deepl" {
@@ -122,7 +137,7 @@ fn main() {
         let tmp_path = args.subtitle_output_path;
         let file = std::fs::File::create(tmp_path).unwrap();
         let mut exporter = output::srt::SrtSubtitleExporter::new(file);
-        exporter.output_subtitles(subtitles);
+        exporter.output_subtitles(&subtitles);
     } else {
         println!("Unsupported subtitle backend now");
         return;
