@@ -46,6 +46,8 @@ Options:
           Video end time [default: 0]
       --subtitle-source <SUBTITLE_SOURCE>
           Subtitle source (default: "audio") (possible values: "audio", "container", "ocr") (example: "audio") (long_about: "Subtitle source to use") [default: audio]
+      --ggml-model-path <GGML_MODEL_PATH>
+          ggml model path (default: "ggml-tiny.bin") (example: "ggml-tiny.bin", ggml-small.bin") (long_about: "Path to the ggml model") [default: ggml-tiny.bin]
       --only-extract-audio
           Only extract the audio (default: false) (long_about: "Only extract the audio, if subtitle source is audio, but do not transcribe (Debug purpose)") (example: true)
       --only-transcript
@@ -66,8 +68,6 @@ Options:
           API base (if llm) (default: "https://api.openai.com") (example: "https://api.openai.com") (long_about: "API base used in `genai` crate (if using llm for translation)") [default: https://api.openai.com]
       --llm-prompt <LLM_PROMPT>
           Prompt (if llm) (default: "") (example: "Translate the following text to English") (long_about: "Prompt (if using llm for translation)") [default: ]
-      --ggml-model-path <GGML_MODEL_PATH>
-          ggml model path (default: "ggml-tiny.bin") (example: "ggml-tiny.bin", ggml-small.bin") (long_about: "Path to the ggml model") [default: ggml-tiny.bin] 
   -h, --help
           Print help
   -V, --version

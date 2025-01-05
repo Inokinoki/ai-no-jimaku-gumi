@@ -50,6 +50,13 @@ struct Args {
     #[arg(long, default_value = "audio")]
     subtitle_source: String,
 
+    /// ggml model path
+    /// (default: "ggml-tiny.bin")
+    /// (example: "ggml-tiny.bin", ggml-small.bin")
+    /// (long_about: "Path to the ggml model")
+    #[arg(long, default_value = "ggml-tiny.bin")]
+    ggml_model_path: String,
+
     /// Only extract the audio
     /// (default: false)
     /// (long_about: "Only extract the audio, if subtitle source is audio, but do not transcribe (Debug purpose)")
@@ -120,13 +127,6 @@ struct Args {
     /// (long_about: "Prompt (if using llm for translation)")
     #[arg(long, default_value = "")]
     llm_prompt: String,
-
-    /// ggml model path
-    /// (default: "ggml-tiny.bin")
-    /// (example: "ggml-tiny.bin", ggml-small.bin")
-    /// (long_about: "Path to the ggml model")
-    #[arg(long, default_value = "ggml-tiny.bin")]
-    ggml_model_path: String,
 }
 
 fn main() {
