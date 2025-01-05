@@ -24,24 +24,15 @@ struct Args {
     /// (default: "ja")
     /// (possible values: "en", "es", "fr", "de", "it", "ja", "ko", "pt", "ru", "zh")
     /// (example: "ja")
-    #[arg(short, long, default_value = "ja")]
+    #[arg(long, default_value = "ja")]
     source_language: String,
 
     /// Which language to translate to
     /// (default: "en")
     /// (possible values: "en", "es", "fr", "de", "it", "ja", "ko", "pt", "ru", "zh")
     /// (example: "en")
-    #[arg(short, long, default_value = "en")]
+    #[arg(long, default_value = "en")]
     target_language: String,
-
-    #[arg(short, long, default_value = "gpt-4o")]
-    model_name: String,
-
-    #[arg(short, long, default_value = "")]
-    api_base: String,
-
-    #[arg(short, long, default_value = "")]
-    prompt: String,
 
     /// Video start time
     #[arg(long, default_value = "0")]
@@ -50,29 +41,6 @@ struct Args {
     /// Video end time
     #[arg(long, default_value = "0")]
     end_time: usize,
-
-    /// Subtitle backend
-    /// (default: "srt")
-    /// (possible values: "srt", "container", "embedded")
-    /// (example: "srt")
-    /// (long_about: "Subtitle backend to use")
-    #[arg(long, default_value = "srt")]
-    subtitle_backend: String,
-
-    /// Subtitle output path (if srt)
-    /// (default: "output.srt")
-    /// (example: "output.srt")
-    /// (long_about: "Subtitle output path (if srt)")
-    #[arg(long, default_value = "output.srt")]
-    subtitle_output_path: String,
-
-    /// Translator backend
-    /// (default: "deepl")
-    /// (possible values: "deepl", "google", "openai")
-    /// (example: "google")
-    /// (long_about: "Translator backend to use")
-    #[arg(long, default_value = "deepl")]
-    translator_backend: String,
 
     /// Subtitle source
     /// (default: "audio")
@@ -88,6 +56,50 @@ struct Args {
     /// (long_about: "Original subtitle path to save the transcripted subtitle as SRT")
     #[arg(long, default_value = "")]
     original_subtitle_path: String,
+
+    /// Subtitle backend
+    /// (default: "srt")
+    /// (possible values: "srt", "container", "embedded")
+    /// (example: "srt")
+    /// (long_about: "Subtitle backend to use")
+    #[arg(short, long, default_value = "srt")]
+    subtitle_backend: String,
+
+    /// Subtitle output path (if srt)
+    /// (default: "output.srt")
+    /// (example: "output.srt")
+    /// (long_about: "Subtitle output path (if srt)")
+    #[arg(long, default_value = "output.srt")]
+    subtitle_output_path: String,
+
+    /// Translator backend
+    /// (default: "deepl")
+    /// (possible values: "deepl", "google", "llm")
+    /// (example: "google")
+    /// (long_about: "Translator backend to use")
+    #[arg(short, long, default_value = "deepl")]
+    translator_backend: String,
+
+    /// Model name (if llm)
+    /// (default: "gpt-4o")
+    /// (example: "gpt-4o")
+    /// (long_about: "Model name (if using llm for translation)")
+    #[arg(long, default_value = "gpt-4o")]
+    llm_model_name: String,
+
+    /// API base (if llm)
+    /// (default: "https://api.openai.com")
+    /// (example: "https://api.openai.com")
+    /// (long_about: "API base used in `genai` crate (if using llm for translation)")
+    #[arg(long, default_value = "https://api.openai.com")]
+    llm_api_base: String,
+
+    /// Prompt (if llm)
+    /// (default: "")
+    /// (example: "Translate the following text to English")
+    /// (long_about: "Prompt (if using llm for translation)")
+    #[arg(long, default_value = "")]
+    llm_prompt: String,
 }
 
 fn main() {
@@ -144,8 +156,8 @@ fn main() {
         }
         "llm" => {
             let rt = tokio::runtime::Runtime::new().unwrap();
-            let model_name = args.model_name.clone();
-            let api_base = args.api_base;
+            let model_name = args.llm_model_name.clone();
+            let api_base = args.llm_api_base;
             let model_name_clone = model_name.clone();
 
             let client = if !api_base.is_empty() {
@@ -165,8 +177,8 @@ fn main() {
             } else {
                 Client::default()
             };
-            let system_prompt = if !args.prompt.is_empty() {
-                args.prompt.clone()
+            let system_prompt = if !args.llm_prompt.is_empty() {
+                args.llm_prompt.clone()
             } else {
                 format!(
                     "Translate the following text. to language {}",
@@ -185,8 +197,8 @@ fn main() {
             });
         }
         // more translators can be added here
-        _ => {
-            println!("Unsupported translator backend now");
+        translator => {
+            println!("Unsupported translator backend now {}", translator);
             return;
         }
     }
