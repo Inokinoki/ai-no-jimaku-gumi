@@ -42,41 +42,46 @@ impl OutputSubtitles for SrtSubtitleExporter {
     }
 }
 
-#[test]
-fn test_output_subtitles() {
-    use std::io::Read;
-    use tempfile::TempDir;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let tmp_dir = TempDir::new().unwrap();
-    let tmp_path = tmp_dir.path().join("test.srt");
-    let file = File::create(tmp_path).unwrap();
-    let mut exporter = SrtSubtitleExporter::new(file);
-    let subtitles = vec![
-        Subtitle {
-            start: 0.0,
-            end: 1.0,
-            text: "Hello, world!".to_string(),
-        },
-        Subtitle {
-            start: 1.0,
-            end: 2.0,
-            text: "Goodbye, world!".to_string(),
-        },
-    ];
-    exporter.output_subtitles(&subtitles);
+    #[test]
+    fn test_output_subtitles() {
+        use std::io::Read;
+        use tempfile::TempDir;
 
-    let tmp_path = tmp_dir.path().join("test.srt");
-    let mut file = File::open(tmp_path).unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    assert_eq!(
-        contents,
-        format!(
-            "1\n{} --> {}\nHello, world!\n\n2\n{} --> {}\nGoodbye, world!\n\n",
-            format_time(0.0),
-            format_time(1.0),
-            format_time(1.0),
-            format_time(2.0)
-        )
-    );
+        let tmp_dir = TempDir::new().unwrap();
+        let tmp_path = tmp_dir.path().join("test.srt");
+        let file = File::create(tmp_path).unwrap();
+        let mut exporter = SrtSubtitleExporter::new(file);
+        let subtitles = vec![
+            Subtitle {
+                start: 0.0,
+                end: 1.0,
+                text: "Hello, world!".to_string(),
+            },
+            Subtitle {
+                start: 1.0,
+                end: 2.0,
+                text: "Goodbye, world!".to_string(),
+            },
+        ];
+        exporter.output_subtitles(&subtitles);
+
+        let tmp_path = tmp_dir.path().join("test.srt");
+        let mut file = File::open(tmp_path).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+        assert_eq!(
+            contents,
+            format!(
+                "1\n{} --> {}\nHello, world!\n\n2\n{} --> {}\nGoodbye, world!\n\n",
+                format_time(0.0),
+                format_time(1.0),
+                format_time(1.0),
+                format_time(2.0)
+            )
+        );
+    }
 }
