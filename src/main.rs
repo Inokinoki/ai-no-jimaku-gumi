@@ -34,15 +34,6 @@ struct Args {
     #[arg(short, long, default_value = "en")]
     target_language: String,
 
-    #[arg(short, long, default_value = "gpt-4o")]
-    model_name: String,
-
-    #[arg(short, long, default_value = "")]
-    api_base: String,
-
-    #[arg(short, long, default_value = "")]
-    prompt: String,
-
     /// Video start time
     #[arg(long, default_value = "0")]
     start_time: usize,
@@ -68,11 +59,32 @@ struct Args {
 
     /// Translator backend
     /// (default: "deepl")
-    /// (possible values: "deepl", "google", "openai")
+    /// (possible values: "deepl", "google", "llm")
     /// (example: "google")
     /// (long_about: "Translator backend to use")
     #[arg(long, default_value = "deepl")]
     translator_backend: String,
+
+    /// Model name (if llm)
+    /// (default: "gpt-4o")
+    /// (example: "gpt-4o")
+    /// (long_about: "Model name (if using llm for translation)")
+    #[arg(short, long, default_value = "gpt-4o")]
+    llm_model_name: String,
+
+    /// API base (if llm)
+    /// (default: "https://api.openai.com")
+    /// (example: "https://api.openai.com")
+    /// (long_about: "API base used in `genai` crate (if using llm for translation)")
+    #[arg(short, long, default_value = "https://api.openai.com")]
+    llm_api_base: String,
+
+    /// Prompt (if llm)
+    /// (default: "")
+    /// (example: "Translate the following text to English")
+    /// (long_about: "Prompt (if using llm for translation)")
+    #[arg(short, long, default_value = "")]
+    llm_prompt: String,
 
     /// Subtitle source
     /// (default: "audio")
@@ -144,8 +156,8 @@ fn main() {
         }
         "llm" => {
             let rt = tokio::runtime::Runtime::new().unwrap();
-            let model_name = args.model_name.clone();
-            let api_base = args.api_base;
+            let model_name = args.llm_model_name.clone();
+            let api_base = args.llm_api_base;
             let model_name_clone = model_name.clone();
 
             let client = if !api_base.is_empty() {
@@ -165,8 +177,8 @@ fn main() {
             } else {
                 Client::default()
             };
-            let system_prompt = if !args.prompt.is_empty() {
-                args.prompt.clone()
+            let system_prompt = if !args.llm_prompt.is_empty() {
+                args.llm_prompt.clone()
             } else {
                 format!(
                     "Translate the following text. to language {}",
@@ -185,8 +197,8 @@ fn main() {
             });
         }
         // more translators can be added here
-        _ => {
-            println!("Unsupported translator backend now");
+        translator => {
+            println!("Unsupported translator backend now {}", translator);
             return;
         }
     }
