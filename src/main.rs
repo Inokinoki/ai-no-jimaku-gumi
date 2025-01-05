@@ -50,6 +50,13 @@ struct Args {
     #[arg(long, default_value = "audio")]
     subtitle_source: String,
 
+    /// ggml model path
+    /// (default: "ggml-tiny.bin")
+    /// (example: "ggml-tiny.bin", ggml-small.bin")
+    /// (long_about: "Path to the ggml model")
+    #[arg(long, default_value = "ggml-tiny.bin")]
+    ggml_model_path: String,
+
     /// Only extract the audio
     /// (default: false)
     /// (long_about: "Only extract the audio, if subtitle source is audio, but do not transcribe (Debug purpose)")
@@ -152,11 +159,12 @@ fn main() {
     let mut subtitles = match args.subtitle_source.as_str() {
         "audio" => {
             utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
-            let state = whisper::experiment::extract_from_f32_16khz_wav_audio(
-                "ggml-tiny.bin",
-                tmp_path_str,
-                &source_language,
-            );
+            let state: whisper_rs::WhisperState =
+                whisper::experiment::extract_from_f32_16khz_wav_audio(
+                    &args.ggml_model_path,
+                    tmp_path_str,
+                    &source_language,
+                );
             utils::whisper_state::create_subtitle_from_whisper_state(&state)
         }
         source => {

@@ -18,7 +18,7 @@ To get started with AI no jimaku gumi, follow these steps:
     ```bash
     cargo build
     ```
-4. Download whisper model:
+4. Download whisper model(you can also download other models refer: https://huggingface.co/ggerganov/whisper.cpp):
     ```bash
     wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
     ```
@@ -46,6 +46,8 @@ Options:
           Video end time [default: 0]
       --subtitle-source <SUBTITLE_SOURCE>
           Subtitle source (default: "audio") (possible values: "audio", "container", "ocr") (example: "audio") (long_about: "Subtitle source to use") [default: audio]
+      --ggml-model-path <GGML_MODEL_PATH>
+          ggml model path (default: "ggml-tiny.bin") (example: "ggml-tiny.bin", ggml-small.bin") (long_about: "Path to the ggml model") [default: ggml-tiny.bin]
       --only-extract-audio
           Only extract the audio (default: false) (long_about: "Only extract the audio, if subtitle source is audio, but do not transcribe (Debug purpose)") (example: true)
       --only-transcript
@@ -87,4 +89,5 @@ export CUSTOM_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxx
     --llm-api-base https://sssss.com/v1/ \
     --llm-prompt 'translate this to English' \
     --llm-model-name 'gpt-4o-mini'
+    --ggml-model-path ggml-small.bin
 ```
