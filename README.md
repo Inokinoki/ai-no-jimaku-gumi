@@ -12,7 +12,7 @@ To get started with AI no jimaku gumi, follow these steps:
     ```
 2. Navigate to the project directory:
     ```bash
-    cd ainojimakugumi
+    cd ai-no-jimaku-gumi
     ```
 3. Build with cargo:
     ```bash
