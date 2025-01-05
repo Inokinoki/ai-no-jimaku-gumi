@@ -8,7 +8,7 @@ To get started with AI no jimaku gumi, follow these steps:
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/inokinoki/ainojimakugumi.git
+    git clone https://github.com/Inokinoki/ai-no-jimaku-gumi.git
     ```
 2. Navigate to the project directory:
     ```bash
