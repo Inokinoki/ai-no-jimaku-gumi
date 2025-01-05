@@ -158,8 +158,48 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
     writer.finalize().unwrap();
 }
 
-#[test]
-fn test_extract_audio_from_video() {
-    extract_audio_from_video("movie.mp4", "audio.wav", 16000);
-    assert!(std::path::Path::new("audio.wav").exists());
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::path::Path;
+
+    fn setup() -> (String, String) {
+        let data_dir = Path::new("data").join("utils");
+        let input_video_path = data_dir
+            .join("audio.mp4")
+            .as_os_str()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let audio_path = data_dir
+            .join("audio.wav")
+            .as_os_str()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        // Use reqwest to download a sample audio as video
+        if !Path::new(input_video_path.as_str()).exists() {
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                let response = reqwest::get(
+                    "https://github.com/ggerganov/whisper.cpp/raw/master/samples/jfk.wav",
+                )
+                .await
+                .unwrap();
+                let bytes = response.bytes().await.unwrap();
+                std::fs::write(input_video_path.as_str(), bytes).unwrap();
+            });
+        }
+
+        (input_video_path, audio_path)
+    }
+
+    #[test]
+    fn test_extract_audio_from_video() {
+        let (video_path, audio_path) = setup();
+
+        extract_audio_from_video(video_path.as_str(), audio_path.as_str(), 16000);
+        assert!(std::path::Path::new(audio_path.as_str()).exists());
+    }
 }
