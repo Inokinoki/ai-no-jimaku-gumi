@@ -46,8 +46,14 @@ Options:
           Video end time [default: 0]
       --subtitle-source <SUBTITLE_SOURCE>
           Subtitle source (default: "audio") (possible values: "audio", "container", "ocr") (example: "audio") (long_about: "Subtitle source to use") [default: audio]
+      --only-extract-audio
+          Only extract the audio (default: false) (long_about: "Only extract the audio, if subtitle source is audio, but do not transcribe (Debug purpose)") (example: true)
+      --only-transcript
+          Only save the transcripted subtitle (default: false) (long_about: "Only save the transcripted subtitle but do not translate (Debug purpose)") (example: true)
       --original-subtitle-path <ORIGINAL_SUBTITLE_PATH>
           Original subtitle SRT file path (default: "") (example: "origin.srt") (long_about: "Original subtitle path to save the transcripted subtitle as SRT") [default: ]
+      --only-translate
+          Only translate the subtitle (default: false) (long_about: "Only translate the subtitle but do not export (Debug purpose)")
   -s, --subtitle-backend <SUBTITLE_BACKEND>
           Subtitle backend (default: "srt") (possible values: "srt", "container", "embedded") (example: "srt") (long_about: "Subtitle backend to use") [default: srt]
       --subtitle-output-path <SUBTITLE_OUTPUT_PATH>

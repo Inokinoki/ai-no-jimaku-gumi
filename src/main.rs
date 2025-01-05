@@ -50,12 +50,32 @@ struct Args {
     #[arg(long, default_value = "audio")]
     subtitle_source: String,
 
+    /// Only extract the audio
+    /// (default: false)
+    /// (long_about: "Only extract the audio, if subtitle source is audio, but do not transcribe (Debug purpose)")
+    /// (example: true)
+    #[arg(long)]
+    only_extract_audio: bool,
+
+    /// Only save the transcripted subtitle
+    /// (default: false)
+    /// (long_about: "Only save the transcripted subtitle but do not translate (Debug purpose)")
+    /// (example: true)
+    #[arg(long)]
+    only_transcript: bool,
+
     /// Original subtitle SRT file path
     /// (default: "")
     /// (example: "origin.srt")
     /// (long_about: "Original subtitle path to save the transcripted subtitle as SRT")
     #[arg(long, default_value = "")]
     original_subtitle_path: String,
+
+    /// Only translate the subtitle
+    /// (default: false)
+    /// (long_about: "Only translate the subtitle but do not export (Debug purpose)")
+    #[arg(long)]
+    only_translate: bool,
 
     /// Subtitle backend
     /// (default: "srt")
@@ -104,7 +124,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let input_video_path = args.input_video_path;
+    let input_video_path = args.input_video_path.as_str();
     let source_language = args.source_language;
     let target_language = args.target_language;
 
@@ -113,27 +133,59 @@ fn main() {
     let tmp_dir = TempDir::new().unwrap();
     let tmp_path = tmp_dir.path().join("audio.wav");
     let tmp_path_str = tmp_path.as_os_str().to_str().unwrap();
-    utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
-    let state = whisper::experiment::extract_from_f32_16khz_wav_audio(
-        "ggml-tiny.bin",
-        tmp_path_str,
-        &source_language,
-    );
 
-    let mut subtitles = utils::whisper_state::create_subtitle_from_whisper_state(&state);
+    if args.only_extract_audio {
+        utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
+
+        // Generate a random name for the audio file based on timestamp
+        let tmp_path = {
+            let timestamp = chrono::Utc::now().timestamp();
+            format!("{}.audio.{}.wav", args.input_video_path, timestamp)
+        };
+        // Copy the audio to the output path
+        std::fs::copy(tmp_path_str, tmp_path.as_str()).unwrap();
+        println!("Done, audio extracted to {}", tmp_path);
+        return;
+    }
+
+    // Get the original subtitles
+    let mut subtitles = match args.subtitle_source.as_str() {
+        "audio" => {
+            utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
+            let state = whisper::experiment::extract_from_f32_16khz_wav_audio(
+                "ggml-tiny.bin",
+                tmp_path_str,
+                &source_language,
+            );
+            utils::whisper_state::create_subtitle_from_whisper_state(&state)
+        }
+        source => {
+            println!("Unsupported subtitle source now, {}", source);
+            return;
+        }
+    };
     if subtitles.is_empty() {
         println!("No subtitles found");
         return;
     }
 
-    if !args.original_subtitle_path.is_empty() {
+    if args.only_transcript {
         // Save original subtitles
-        let tmp_path = args.original_subtitle_path;
-        let file = std::fs::File::create(tmp_path).unwrap();
+        let tmp_path = if args.original_subtitle_path.is_empty() {
+            input_video_path.to_string() + ".srt"
+        } else {
+            args.original_subtitle_path
+        };
+        let file = std::fs::File::create(tmp_path.as_str()).unwrap();
         let mut exporter = output::srt::SrtSubtitleExporter::new(file);
         exporter.output_subtitles(&subtitles);
+
+        // Save transcripted subtitles and return
+        println!("Done, transcripted subtitles saved to {}", tmp_path);
+        return;
     }
 
+    // Translate the subtitles
     match args.translator_backend.as_str() {
         "deepl" => {
             let deepl_api_key = std::env::var("DEEPL_API_KEY").unwrap();
@@ -203,11 +255,22 @@ fn main() {
         }
     }
 
-    if args.subtitle_backend == "srt" {
-        let tmp_path = args.subtitle_output_path;
-        let file = std::fs::File::create(tmp_path).unwrap();
+    // Save the translated subtitles
+    if args.subtitle_backend == "srt" || args.only_translate {
+        let tmp_path = if args.original_subtitle_path.is_empty() {
+            input_video_path.to_string() + ".srt"
+        } else {
+            args.subtitle_output_path
+        };
+        let file = std::fs::File::create(tmp_path.as_str()).unwrap();
         let mut exporter = output::srt::SrtSubtitleExporter::new(file);
         exporter.output_subtitles(&subtitles);
+
+        if args.only_translate {
+            // This might be confusing, but we return here to avoid any other post-processing
+            println!("Done, translated subtitles saved to {}", tmp_path);
+            return;
+        }
     } else {
         println!("Unsupported subtitle backend now");
         return;
