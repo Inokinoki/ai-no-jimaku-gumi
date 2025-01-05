@@ -25,7 +25,7 @@ jobs:
     
     - name: Install dependencies
       run: sudo apt-get install -y clang cmake pkg-config \
-        libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev libavfilter-dev libavresample-dev libpostproc-dev libswresample-dev
+        libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev libavfilter-dev libpostproc-dev libswresample-dev
 
     - name: Build
       run: cargo build --verbose
