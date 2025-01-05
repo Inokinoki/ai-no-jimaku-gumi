@@ -18,7 +18,7 @@ To get started with AI no jimaku gumi, follow these steps:
     ```bash
     cargo build
     ```
-4. Download whisper model:
+4. Download whisper model(you can also download other models refer: https://huggingface.co/ggerganov/whisper.cpp):
     ```bash
     wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
     ```
@@ -66,6 +66,8 @@ Options:
           API base (if llm) (default: "https://api.openai.com") (example: "https://api.openai.com") (long_about: "API base used in `genai` crate (if using llm for translation)") [default: https://api.openai.com]
       --llm-prompt <LLM_PROMPT>
           Prompt (if llm) (default: "") (example: "Translate the following text to English") (long_about: "Prompt (if using llm for translation)") [default: ]
+      --ggml-model-path <GGML_MODEL_PATH>
+          ggml model path (default: "ggml-tiny.bin") (example: "ggml-tiny.bin", ggml-small.bin") (long_about: "Path to the ggml model") [default: ggml-tiny.bin] 
   -h, --help
           Print help
   -V, --version
@@ -87,4 +89,5 @@ export CUSTOM_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxx
     --llm-api-base https://sssss.com/v1/ \
     --llm-prompt 'translate this to English' \
     --llm-model-name 'gpt-4o-mini'
+    --ggml-model-path ggml-small.bin
 ```
