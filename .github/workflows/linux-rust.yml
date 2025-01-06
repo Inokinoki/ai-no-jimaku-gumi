@@ -1,0 +1,33 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    
+    - name: Install dependencies
+      run: sudo apt update && sudo apt-get install -y clang cmake pkg-config libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev libavfilter-dev libpostproc-dev libswresample-dev
+
+    - name: Build
+      run: cargo build --verbose
+
+    - name: Test
+      run: cargo test --verbose
