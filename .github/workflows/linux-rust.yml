@@ -24,7 +24,7 @@ jobs:
         override: true
     
     - name: Install dependencies
-      run: sudo apt update && sudo apt-get install -y clang cmake pkg-config libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev libavfilter-dev libpostproc-dev libswresample-dev
+      run: sudo apt update && sudo apt-get install -y clang cmake make pkg-config libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev libavfilter-dev libpostproc-dev libswresample-dev
 
     - name: Build
       run: cargo build --verbose

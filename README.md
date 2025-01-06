@@ -29,7 +29,7 @@ brew install cmake ffmpeg
 Ubuntu:
 
 ```
-apt-get install -y clang cmake pkg-config \
+apt-get install -y clang cmake make pkg-config \
     libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev \
     libavutil-dev libpostproc-dev libswresample-dev libswscale-dev 
 ```
@@ -37,16 +37,16 @@ apt-get install -y clang cmake pkg-config \
 Fedora:
 
 ```
-dnf install clang cmake ffmpeg-free-devel pkgconf-pkg-config
+dnf install clang cmake ffmpeg-free-devel make pkgconf-pkg-config
 ```
 
 Arch Linux:
 
 ```
-pacman -S clang cmake ffmpeg pkgconf
+pacman -S clang cmake ffmpeg make pkgconf
 ```
 
-Please look for `clang`, `cmake`, `pkgconfig` and `ffmpeg` packages in your distribution, if it's not one of above.
+Please look for `clang`, `cmake`, `make`, `pkgconfig` and `ffmpeg` packages in your distribution, if it's not one of above.
 
 You might need to install some other packages to enable GPU/NPU acceleration.
 
