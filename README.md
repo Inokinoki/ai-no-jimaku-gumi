@@ -2,7 +2,7 @@
 
 [![Build and test on Linux](https://github.com/Inokinoki/ai-no-jimaku-gumi/actions/workflows/linux-rust.yml/badge.svg)](https://github.com/Inokinoki/ai-no-jimaku-gumi/actions/workflows/linux-rust.yml)
 
-AI no jimaku gumi is a cli utility to facilitate the translation of video.
+AI no jimaku gumi is a cli utility to facilitate the translation and subtitle making of video.
 
 ## Setup
 
@@ -30,7 +30,7 @@ brew install cmake ffmpeg
 
 Ubuntu:
 
-```
+```bash
 apt-get install -y clang cmake make pkg-config \
     libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev \
     libavutil-dev libpostproc-dev libswresample-dev libswscale-dev 
@@ -38,13 +38,13 @@ apt-get install -y clang cmake make pkg-config \
 
 Fedora:
 
-```
+```bash
 dnf install clang cmake ffmpeg-free-devel make pkgconf-pkg-config
 ```
 
 Arch Linux:
 
-```
+```bash
 pacman -S clang cmake ffmpeg make pkgconf
 ```
 
@@ -76,21 +76,21 @@ Run it with your video path after `--input-video-path` and target language after
 To use AI no jimaku gumi, refer this help:
 
 ```
-aI NO jimaKu gumI, a sub-title maker using AI.
+aI NO jimaKu gumI, a subtitle maker using AI.
 
 Usage: ainojimakugumi [OPTIONS] --input-video-path <INPUT_VIDEO_PATH>
 
 Options:
   -i, --input-video-path <INPUT_VIDEO_PATH>
-          Name of the person to greet
+          Path to the input video
       --source-language <SOURCE_LANGUAGE>
           Which language to translate from (default: "ja") (possible values: "en", "es", "fr", "de", "it", "ja", "ko", "pt", "ru", "zh") (example: "ja") [default: ja]
       --target-language <TARGET_LANGUAGE>
           Which language to translate to (default: "en") (possible values: "en", "es", "fr", "de", "it", "ja", "ko", "pt", "ru", "zh") (example: "en") [default: en]
       --start-time <START_TIME>
-          Video start time [default: 0]
+          Video start time (not used yet) [default: 0]
       --end-time <END_TIME>
-          Video end time [default: 0]
+          Video end time (not used yet) [default: 0]
       --subtitle-source <SUBTITLE_SOURCE>
           Subtitle source (default: "audio") (possible values: "audio", "container", "ocr") (example: "audio") (long_about: "Subtitle source to use") [default: audio]
       --ggml-model-path <GGML_MODEL_PATH>
