@@ -24,12 +24,20 @@ chrono = "0.4.39"
 whisper-rs = { version = "0.13.2", features = ["metal"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-whisper-rs = { version = "0.13.2", features = ["cuda", "hipblas", "vulkan"] }
+whisper-rs = { version = "0.13.2" }
+# Vulkan
+# whisper-rs = { version = "0.13.2", features = ["vulkan"] }
+# NVIDIA CUDA
+# whisper-rs = { version = "0.13.2", features = ["cuda"] }
+# AMD ROCm
+# whisper-rs = { version = "0.13.2", features = ["hipblas"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-whisper-rs = { version = "0.13.2", features = ["cuda", "vulkan"] }
+whisper-rs = { version = "0.13.2" }
+# Vulkan
+# whisper-rs = { version = "0.13.2", features = ["vulkan"] }
+# NVIDIA CUDA
+# whisper-rs = { version = "0.13.2", features = ["cuda"] }
 
 [dev-dependencies]
-hound = "3.5.1"
-tokio = { version = "1", features = ["full"] }
 mockito = "1.6.1"

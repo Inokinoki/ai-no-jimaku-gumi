@@ -2,7 +2,7 @@
 
 AI no jimaku gumi is a cli utility to facilitate the translation of video.
 
-## Installation
+## Setup
 
 To get started with AI no jimaku gumi, follow these steps:
 
@@ -14,15 +14,60 @@ To get started with AI no jimaku gumi, follow these steps:
     ```bash
     cd ai-no-jimaku-gumi
     ```
-3. Build with cargo:
-    ```bash
-    cargo build
-    ```
-4. Download whisper model(you can also download other models refer: https://huggingface.co/ggerganov/whisper.cpp):
-    ```bash
-    wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
-    ```
-5. Run it with your video path after `--input-video-path` and target language after `-t`.
+3. Install build dependencies:
+
+### macOS
+
+Using Homebrew:
+
+```bash
+brew install cmake ffmpeg
+```
+
+### Linux
+
+Ubuntu:
+
+```
+apt-get install -y clang cmake make pkg-config \
+    libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev \
+    libavutil-dev libpostproc-dev libswresample-dev libswscale-dev 
+```
+
+Fedora:
+
+```
+dnf install clang cmake ffmpeg-free-devel make pkgconf-pkg-config
+```
+
+Arch Linux:
+
+```
+pacman -S clang cmake ffmpeg make pkgconf
+```
+
+Please look for `clang`, `cmake`, `make`, `pkgconfig` and `ffmpeg` packages in your distribution, if it's not one of above.
+
+You might need to install some other packages to enable GPU/NPU acceleration.
+
+### Windows
+
+TODO
+
+## Build
+
+Build with cargo:
+
+```bash
+cargo build
+```
+
+Download whisper model(you can also download other models refer: https://huggingface.co/ggerganov/whisper.cpp):
+```bash
+wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+```
+
+Run it with your video path after `--input-video-path` and target language after `-t`.
 
 ## Usage
 
