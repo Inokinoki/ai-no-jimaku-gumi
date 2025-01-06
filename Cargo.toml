@@ -1,6 +1,6 @@
 [package]
 name = "ainojimakugumi"
-description = "aI NO jimaKu gumI, a sub-title maker using AI."
+description = "aI NO jimaKu gumI, a subtitle maker using AI."
 version = "0.1.0"
 edition = "2021"
 

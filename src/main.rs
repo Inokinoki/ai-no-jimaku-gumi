@@ -16,7 +16,7 @@ use tempfile::TempDir;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Name of the person to greet
+    /// Path to the input video
     #[arg(short, long)]
     input_video_path: String,
 
@@ -34,11 +34,11 @@ struct Args {
     #[arg(long, default_value = "en")]
     target_language: String,
 
-    /// Video start time
+    /// Video start time (not used yet)
     #[arg(long, default_value = "0")]
     start_time: usize,
 
-    /// Video end time
+    /// Video end time (not used yet)
     #[arg(long, default_value = "0")]
     end_time: usize,
 
