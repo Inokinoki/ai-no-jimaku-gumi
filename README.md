@@ -1,5 +1,7 @@
 # AI no jimaku gumi (AIの字幕組)
 
+[![Build and test on Linux](https://github.com/Inokinoki/ai-no-jimaku-gumi/actions/workflows/linux-rust.yml/badge.svg)](https://github.com/Inokinoki/ai-no-jimaku-gumi/actions/workflows/linux-rust.yml)
+
 AI no jimaku gumi is a cli utility to facilitate the translation of video.
 
 ## Setup
@@ -136,3 +138,13 @@ export CUSTOM_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxx
     --llm-model-name 'gpt-4o-mini'
     --ggml-model-path ggml-small.bin
 ```
+
+## Star History
+
+<a href="https://star-history.com/#Inokinoki/ai-no-jimaku-gumi&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Inokinoki/ai-no-jimaku-gumi&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Inokinoki/ai-no-jimaku-gumi&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Inokinoki/ai-no-jimaku-gumi&type=Date" />
+ </picture>
+</a>
