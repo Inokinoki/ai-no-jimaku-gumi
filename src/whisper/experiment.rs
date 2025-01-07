@@ -12,6 +12,15 @@ pub fn extract_from_f32_16khz_wav_audio(
     wav_path: &str,
     language: &str,
 ) -> WhisperState {
+    extract_and_translate_from_f32_16khz_wav_audio(model_path, wav_path, language, false)
+}
+
+pub fn extract_and_translate_from_f32_16khz_wav_audio(
+    model_path: &str,
+    wav_path: &str,
+    language: &str,
+    translate: bool,
+) -> WhisperState {
     let samples: Vec<f32> = hound::WavReader::open(wav_path)
         .unwrap()
         .into_samples::<f32>()
@@ -26,7 +35,12 @@ pub fn extract_from_f32_16khz_wav_audio(
 
     let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
 
-    // and set the language to translate to to english
+    if translate {
+        // we can also translate the output to another language
+        // this is optional
+        params.set_translate(true);
+    }
+    // and set the language of the subtitles that we want
     params.set_language(Some(&language));
 
     // we also explicitly disable anything that prints to stdout
@@ -139,6 +153,10 @@ mod tests {
     fn test_extract_from_f32_16khz_wav_audio() {
         let (audio_path, model_path) = setup();
 
-        extract_from_f32_16khz_wav_audio(&model_path, &audio_path, "en");
+        let raw_state = extract_from_f32_16khz_wav_audio(&model_path, &audio_path, "en");
+        assert!(raw_state.full_n_segments().expect("failed to get number of segments") > 0);
+
+        let translated_state = extract_and_translate_from_f32_16khz_wav_audio(&model_path, &audio_path, "de", true);
+        assert!(translated_state.full_n_segments().expect("failed to get number of segments") > 0);
     }
 }

@@ -101,7 +101,7 @@ struct Args {
 
     /// Translator backend
     /// (default: "deepl")
-    /// (possible values: "deepl", "google", "llm")
+    /// (possible values: "deepl", "google", "llm", "whisper")
     /// (example: "google")
     /// (long_about: "Translator backend to use")
     #[arg(short, long, default_value = "deepl")]
@@ -159,12 +159,22 @@ fn main() {
     let mut subtitles = match args.subtitle_source.as_str() {
         "audio" => {
             utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
-            let state: whisper_rs::WhisperState =
+            let state: whisper_rs::WhisperState = if args.translator_backend == "whisper" {
+                // Transribe and translate the audio into subtitle directly
+                whisper::experiment::extract_and_translate_from_f32_16khz_wav_audio(
+                    &args.ggml_model_path,
+                    tmp_path_str,
+                    &target_language,
+                    true,
+                )
+            } else {
+                // Transcribe the audio into subtitle, the translation will be done later
                 whisper::experiment::extract_from_f32_16khz_wav_audio(
                     &args.ggml_model_path,
                     tmp_path_str,
                     &source_language,
-                );
+                )
+            };
             utils::whisper_state::create_subtitle_from_whisper_state(&state)
         }
         source => {
@@ -195,6 +205,18 @@ fn main() {
 
     // Translate the subtitles
     match args.translator_backend.as_str() {
+        "whisper" => {
+            // Already translated if audio source is used
+            match args.subtitle_source.as_str() {
+                "audio" => {
+                    println!("Skipping - subtitles are already translated using whisper");
+                }
+                source => {
+                    println!("Unsupported translator backend for the given input source now, {}", source);
+                    return;
+                }
+            };
+        }
         "deepl" => {
             let deepl_api_key = std::env::var("DEEPL_API_KEY").unwrap();
             if deepl_api_key.is_empty() {
