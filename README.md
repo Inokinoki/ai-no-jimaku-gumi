@@ -138,6 +138,7 @@ export CUSTOM_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxx
     --llm-model-name 'gpt-4o-mini'
     --ggml-model-path ggml-small.bin
 ```
+- `whisper`: use Whisper.cpp to directly output translated subtitles from audio **(audio only)**.
 
 ## Star History
 
