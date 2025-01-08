@@ -160,11 +160,16 @@ fn main() {
         "audio" => {
             utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
             let state: whisper_rs::WhisperState = if args.translator_backend == "whisper" {
-                // Transribe and translate the audio into subtitle directly
+                if target_language != "en" {
+                    println!("Whisper only supports english translation");
+                    return;
+                }
+
+                // Transribe and translate the audio into subtitle directly (english only)
                 whisper::experiment::extract_and_translate_from_f32_16khz_wav_audio(
                     &args.ggml_model_path,
                     tmp_path_str,
-                    &target_language,
+                    &source_language,
                     true,
                 )
             } else {

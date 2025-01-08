@@ -36,7 +36,7 @@ pub fn extract_and_translate_from_f32_16khz_wav_audio(
     let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
 
     if translate {
-        // we can also translate the output to another language
+        // we can also translate the output to english directly in the model
         // this is optional
         params.set_translate(true);
     }

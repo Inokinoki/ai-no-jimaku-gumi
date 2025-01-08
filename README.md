@@ -121,7 +121,7 @@ Options:
           Print version
 ```
 
-We are currently supporting only `deepl, llm` translation and `srt` export.
+We are currently supporting only `deepl`, `llm`, `whisper` translation and `srt` export.
 
 ### Translator backend
 
@@ -138,7 +138,7 @@ export CUSTOM_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxx
     --llm-model-name 'gpt-4o-mini'
     --ggml-model-path ggml-small.bin
 ```
-- `whisper`: use Whisper.cpp to directly output translated subtitles from audio **(audio only)**.
+- `whisper` (experimental): use Whisper.cpp to directly output translated subtitles from audio **(audio only, English only)**.
 
 ## Star History
 
