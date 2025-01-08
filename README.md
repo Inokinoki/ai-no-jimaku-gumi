@@ -108,7 +108,7 @@ Options:
       --subtitle-output-path <SUBTITLE_OUTPUT_PATH>
           Subtitle output path (if srt) (default: "output.srt") (example: "output.srt") (long_about: "Subtitle output path (if srt)") [default: output.srt]
   -t, --translator-backend <TRANSLATOR_BACKEND>
-          Translator backend (default: "deepl") (possible values: "deepl", "google", "llm") (example: "google") (long_about: "Translator backend to use") [default: deepl]
+          Translator backend (default: "deepl") (possible values: "deepl", "google", "llm", "whisper") (example: "google") (long_about: "Translator backend to use") [default: deepl]
       --llm-model-name <LLM_MODEL_NAME>
           Model name (if llm) (default: "gpt-4o") (example: "gpt-4o") (long_about: "Model name (if using llm for translation)") [default: gpt-4o]
       --llm-api-base <LLM_API_BASE>
@@ -121,7 +121,7 @@ Options:
           Print version
 ```
 
-We are currently supporting only `deepl, llm` translation and `srt` export.
+We are currently supporting only `deepl`, `llm`, `whisper` translation and `srt` export.
 
 ### Translator backend
 
@@ -138,6 +138,7 @@ export CUSTOM_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxx
     --llm-model-name 'gpt-4o-mini'
     --ggml-model-path ggml-small.bin
 ```
+- `whisper` (experimental): use Whisper.cpp to directly output translated subtitles from audio **(audio only, English only)**.
 
 ## Star History
 
