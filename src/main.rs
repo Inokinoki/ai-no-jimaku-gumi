@@ -1,7 +1,5 @@
 use clap::Parser;
 
-use tokio;
-
 mod output;
 mod translate;
 mod utils;
@@ -142,7 +140,7 @@ fn main() {
     let tmp_path_str = tmp_path.as_os_str().to_str().unwrap();
 
     if args.only_extract_audio {
-        utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
+        utils::ffmpeg_audio::extract_audio_from_video(input_video_path, tmp_path_str, 16000);
 
         // Generate a random name for the audio file based on timestamp
         let tmp_path = {
@@ -158,7 +156,7 @@ fn main() {
     // Get the original subtitles
     let mut subtitles = match args.subtitle_source.as_str() {
         "audio" => {
-            utils::ffmpeg_audio::extract_audio_from_video(&input_video_path, tmp_path_str, 16000);
+            utils::ffmpeg_audio::extract_audio_from_video(input_video_path, tmp_path_str, 16000);
             let state: whisper_rs::WhisperState = if args.translator_backend == "whisper" {
                 if target_language != "en" {
                     println!("Whisper only supports english translation");
@@ -217,7 +215,10 @@ fn main() {
                     println!("Skipping - subtitles are already translated using whisper");
                 }
                 source => {
-                    println!("Unsupported translator backend for the given input source now, {}", source);
+                    println!(
+                        "Unsupported translator backend for the given input source now, {}",
+                        source
+                    );
                     return;
                 }
             };
@@ -304,10 +305,8 @@ fn main() {
         if args.only_translate {
             // This might be confusing, but we return here to avoid any other post-processing
             println!("Done, translated subtitles saved to {}", tmp_path);
-            return;
         }
     } else {
         println!("Unsupported subtitle backend now");
-        return;
     }
 }
