@@ -11,7 +11,7 @@ use ffmpeg_next::{
 fn convert_to_f32_audio_sample(samples: Vec<u8>, format: format::Sample) -> f32 {
     match format {
         ffmpeg::format::Sample::U8(_) => {
-            assert!(samples.len() >= 1);
+            assert!(!samples.is_empty());
             samples[0] as f32 / 255.0
         }
         ffmpeg::format::Sample::I16(_) => {
@@ -52,7 +52,6 @@ fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> 
     // Get the number of samples in the decoded audio
     let num_samples = decoded.samples();
     let mut converted_samples = Vec::with_capacity(num_samples);
-    let mut count = 0;
     let data_len = match decoded.format() {
         ffmpeg::format::Sample::U8(_) => 1,
         ffmpeg::format::Sample::I16(_) => 2,
@@ -62,7 +61,7 @@ fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> 
         ffmpeg::format::Sample::F64(_) => 8,
         ffmpeg::format::Sample::None => 0,
     };
-    for chunk in decoded.data(plane).chunks(data_len) {
+    for (count, chunk) in decoded.data(plane).chunks(data_len).enumerate() {
         if count >= num_samples {
             // Finish if we have enough samples
             break;
@@ -71,7 +70,6 @@ fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> 
         // Convert the chunk to a f32 sample
         let sample = convert_to_f32_audio_sample(chunk.to_vec(), decoded.format());
         converted_samples.push(sample);
-        count += 1;
     }
     converted_samples
 }

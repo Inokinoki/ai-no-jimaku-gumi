@@ -24,17 +24,17 @@ fn format_time(time: f32) -> String {
 }
 
 impl OutputSubtitles for SrtSubtitleExporter {
-    fn output_subtitles(&mut self, subtitles: &Vec<Subtitle>) {
+    fn output_subtitles(&mut self, subtitles: &[Subtitle]) {
         let mut srt = String::new();
         for (i, subtitle) in subtitles.iter().enumerate() {
             srt.push_str(&(i + 1).to_string());
-            srt.push_str("\n");
+            srt.push('\n');
             srt.push_str(&format!(
                 "{} --> {}",
                 format_time(subtitle.start),
                 format_time(subtitle.end)
             ));
-            srt.push_str("\n");
+            srt.push('\n');
             srt.push_str(subtitle.text.trim());
             srt.push_str("\n\n");
         }

@@ -28,7 +28,7 @@ pub fn extract_and_translate_from_f32_16khz_wav_audio(
         .collect();
 
     // load a context and model
-    let ctx = WhisperContext::new_with_params(&model_path, WhisperContextParameters::default())
+    let ctx = WhisperContext::new_with_params(model_path, WhisperContextParameters::default())
         .expect("failed to load model");
 
     let mut state = ctx.create_state().expect("failed to create state");
@@ -41,7 +41,7 @@ pub fn extract_and_translate_from_f32_16khz_wav_audio(
         params.set_translate(true);
     }
     // and set the language of the subtitles that we want
-    params.set_language(Some(&language));
+    params.set_language(Some(language));
 
     // we also explicitly disable anything that prints to stdout
     params.set_print_special(false);
@@ -154,9 +154,20 @@ mod tests {
         let (audio_path, model_path) = setup();
 
         let raw_state = extract_from_f32_16khz_wav_audio(&model_path, &audio_path, "en");
-        assert!(raw_state.full_n_segments().expect("failed to get number of segments") > 0);
+        assert!(
+            raw_state
+                .full_n_segments()
+                .expect("failed to get number of segments")
+                > 0
+        );
 
-        let translated_state = extract_and_translate_from_f32_16khz_wav_audio(&model_path, &audio_path, "de", true);
-        assert!(translated_state.full_n_segments().expect("failed to get number of segments") > 0);
+        let translated_state =
+            extract_and_translate_from_f32_16khz_wav_audio(&model_path, &audio_path, "de", true);
+        assert!(
+            translated_state
+                .full_n_segments()
+                .expect("failed to get number of segments")
+                > 0
+        );
     }
 }
