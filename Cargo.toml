@@ -3,6 +3,18 @@ name = "ainojimakugumi"
 description = "aI NO jimaKu gumI, a subtitle maker using AI."
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+keywords = [
+    "AI",
+    "ffmpeg",
+    "subtitle",
+    "LLM",
+    "whisper",
+]
+exclude = [
+    ".github/*",
+    "data/*",
+]
 
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
