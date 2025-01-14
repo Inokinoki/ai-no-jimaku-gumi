@@ -3,10 +3,7 @@ use ffmpeg::format::sample::Type as SampleType;
 use ffmpeg::media::Type;
 use ffmpeg::software::resampling::context::Context as Resampler;
 use ffmpeg_next::{
-    self as ffmpeg,
-    codec::Parameters,
-    ffi::{AVChannelLayout, AVSampleFormat},
-    format,
+    self as ffmpeg, format,
     frame::{self, Audio},
     util,
 };
@@ -14,7 +11,7 @@ use ffmpeg_next::{
 fn convert_to_f32_audio_sample(samples: Vec<u8>, format: format::Sample) -> f32 {
     match format {
         ffmpeg::format::Sample::U8(_) => {
-            assert!(samples.len() >= 1);
+            assert!(!samples.is_empty());
             samples[0] as f32 / 255.0
         }
         ffmpeg::format::Sample::I16(_) => {
@@ -55,7 +52,6 @@ fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> 
     // Get the number of samples in the decoded audio
     let num_samples = decoded.samples();
     let mut converted_samples = Vec::with_capacity(num_samples);
-    let mut count = 0;
     let data_len = match decoded.format() {
         ffmpeg::format::Sample::U8(_) => 1,
         ffmpeg::format::Sample::I16(_) => 2,
@@ -65,7 +61,7 @@ fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> 
         ffmpeg::format::Sample::F64(_) => 8,
         ffmpeg::format::Sample::None => 0,
     };
-    for chunk in decoded.data(plane).chunks(data_len) {
+    for (count, chunk) in decoded.data(plane).chunks(data_len).enumerate() {
         if count >= num_samples {
             // Finish if we have enough samples
             break;
@@ -74,55 +70,8 @@ fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> 
         // Convert the chunk to a f32 sample
         let sample = convert_to_f32_audio_sample(chunk.to_vec(), decoded.format());
         converted_samples.push(sample);
-        count += 1;
     }
     converted_samples
-}
-
-// Get sample rate from input parameters
-fn get_sample_rate(params: &Parameters) -> u32 {
-    unsafe {
-        // Extract sample rate from input parameters
-        (*params.as_ptr()).sample_rate as u32
-    }
-}
-
-// Convert sample format from i32 in Parameters to AVSampleFormat
-fn get_av_sample_format(params: &Parameters) -> AVSampleFormat {
-    unsafe {
-        // Extract format from input parameters
-        match (*params.as_ptr()).format {
-            0 => AVSampleFormat::AV_SAMPLE_FMT_NONE,
-            1 => AVSampleFormat::AV_SAMPLE_FMT_U8,
-            2 => AVSampleFormat::AV_SAMPLE_FMT_S16,
-            3 => AVSampleFormat::AV_SAMPLE_FMT_S32,
-            4 => AVSampleFormat::AV_SAMPLE_FMT_FLT,
-            5 => AVSampleFormat::AV_SAMPLE_FMT_DBL,
-            6 => AVSampleFormat::AV_SAMPLE_FMT_U8P,
-            7 => AVSampleFormat::AV_SAMPLE_FMT_S16P,
-            8 => AVSampleFormat::AV_SAMPLE_FMT_S32P,
-            9 => AVSampleFormat::AV_SAMPLE_FMT_FLTP,
-            10 => AVSampleFormat::AV_SAMPLE_FMT_DBLP,
-            11 => AVSampleFormat::AV_SAMPLE_FMT_S64,
-            12 => AVSampleFormat::AV_SAMPLE_FMT_S64P,
-            13 => AVSampleFormat::AV_SAMPLE_FMT_NB,
-            _ => AVSampleFormat::AV_SAMPLE_FMT_NONE,
-        }
-    }
-}
-
-fn get_av_sample_bitrate(params: &Parameters) -> i64 {
-    unsafe {
-        // Extract bitrate from input parameters
-        (*params.as_ptr()).bit_rate as i64
-    }
-}
-
-fn get_av_sample_channel_layout(params: &Parameters) -> AVChannelLayout {
-    unsafe {
-        // Extract channel layout from input parameters
-        (*params.as_ptr()).ch_layout.clone()
-    }
 }
 
 // Extract audio from video using ffmpeg-next
@@ -207,8 +156,48 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
     writer.finalize().unwrap();
 }
 
-#[test]
-fn test_extract_audio_from_video() {
-    extract_audio_from_video("movie.mp4", "audio.wav", 16000);
-    assert!(std::path::Path::new("audio.wav").exists());
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::path::Path;
+
+    fn setup() -> (String, String) {
+        let data_dir = Path::new("data").join("utils");
+        let input_video_path = data_dir
+            .join("audio.mp4")
+            .as_os_str()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let audio_path = data_dir
+            .join("audio.wav")
+            .as_os_str()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        // Use reqwest to download a sample audio as video
+        if !Path::new(input_video_path.as_str()).exists() {
+            tokio::runtime::Runtime::new().unwrap().block_on(async {
+                let response = reqwest::get(
+                    "https://github.com/ggerganov/whisper.cpp/raw/master/samples/jfk.wav",
+                )
+                .await
+                .unwrap();
+                let bytes = response.bytes().await.unwrap();
+                std::fs::write(input_video_path.as_str(), bytes).unwrap();
+            });
+        }
+
+        (input_video_path, audio_path)
+    }
+
+    #[test]
+    fn test_extract_audio_from_video() {
+        let (video_path, audio_path) = setup();
+
+        extract_audio_from_video(video_path.as_str(), audio_path.as_str(), 16000);
+        assert!(std::path::Path::new(audio_path.as_str()).exists());
+    }
 }
