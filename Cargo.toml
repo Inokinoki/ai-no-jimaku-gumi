@@ -6,15 +6,10 @@ edition = "2021"
 license = "MIT"
 keywords = [
     "AI",
-    "multilingual",
     "ffmpeg",
     "subtitle",
-    "subtitle-conversion",
-    "subtitle-generator",
-    "ML",
     "LLM",
     "whisper",
-    "whisper-cpp",
 ]
 exclude = [
     ".github/*",
