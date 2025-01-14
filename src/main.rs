@@ -91,7 +91,7 @@ struct Args {
     subtitle_backend: String,
 
     /// Subtitle output path
-    /// (default: "output.srt")
+    /// (default: "None")
     /// (example: "output.srt")
     /// (long_about: "Subtitle output path (if srt) or video output path (if container or embedded)")
     #[arg(long, default_value = None)]
