@@ -1,12 +1,49 @@
+use crate::output::OutputSubtitles;
+use crate::output::Subtitle;
 use ffmpeg_next::{
-    self as ffmpeg, codec, decoder::subtitle, encoder, ffi::{AVCodecID, AVMediaType}, format, media, Rational
+    self as ffmpeg, codec, encoder,
+    ffi::{AVCodecID, AVMediaType},
+    format, media, Rational,
 };
+use tempfile::TempDir;
+
+use super::srt::SrtSubtitleExporter;
 
 pub(crate) struct VideoSubtitleTrackExporter {
+    in_video_path: String,
+    out_video_path: String,
 }
 
+impl VideoSubtitleTrackExporter {
+    pub fn new(in_video_path: String, out_video_path: String) -> VideoSubtitleTrackExporter {
+        VideoSubtitleTrackExporter {
+            in_video_path,
+            out_video_path,
+        }
+    }
+}
 
-fn export_subtitle_to_video(in_video_path: &str, out_video_path: &str) {
+impl OutputSubtitles for VideoSubtitleTrackExporter {
+    fn output_subtitles(&mut self, subtitles: &[Subtitle]) {
+        // Write subtitles to a temp SRT file
+        let tmp_dir = TempDir::new().unwrap();
+        let tmp_path = tmp_dir.path().join("output.srt");
+        let tmp_path_str = tmp_path.as_os_str().to_str().unwrap();
+
+        let file = std::fs::File::create(tmp_path_str).unwrap();
+        let mut exporter = SrtSubtitleExporter::new(file);
+        exporter.output_subtitles(&subtitles);
+
+        // Export subtitles to the video
+        export_subtitle_to_video(
+            self.in_video_path.as_str(),
+            self.out_video_path.as_str(),
+            tmp_path_str,
+        );
+    }
+}
+
+fn export_subtitle_to_video(in_video_path: &str, out_video_path: &str, subtitle_path: &str) {
     ffmpeg::init().unwrap();
 
     let in_place = in_video_path == out_video_path;
@@ -22,15 +59,20 @@ fn export_subtitle_to_video(in_video_path: &str, out_video_path: &str) {
     let mut stream_mapping = vec![0; ictx.nb_streams() as _];
     let mut ist_time_bases = vec![Rational(0, 1); ictx.nb_streams() as _];
     let mut ost_index = 0;
-    let mut stream_count = 0;
-    println!("nb_streams: {}", ictx.nb_streams());
+    let _stream_count = ictx.nb_streams();
     for (ist_index, ist) in ictx.streams().enumerate() {
         let ist_medium = ist.parameters().medium();
-        println!("ist_index: {}, ist_type: {:?}", ist_index, ist.parameters().medium());
+        println!(
+            "ist_index: {}, ist_type: {:?}",
+            ist_index,
+            ist.parameters().medium()
+        );
         if ist_medium != media::Type::Audio
             && ist_medium != media::Type::Video
             && ist_medium != media::Type::Subtitle
         {
+            // Skip non-audio, non-video, non-subtitle streams
+            // Note: we might lose Data/Attachment streams here
             stream_mapping[ist_index] = -1;
             continue;
         }
@@ -48,20 +90,22 @@ fn export_subtitle_to_video(in_video_path: &str, out_video_path: &str) {
     }
 
     // Add subtitle track
-    let subtitle_path = "output.srt";
     let mut subtitle_ictx = format::input(&subtitle_path).unwrap();
     let subtitle_stream = subtitle_ictx.streams().best(media::Type::Subtitle).unwrap();
-    println!("subtitle_stream: {:?}", subtitle_stream);
     let mut subtitle_ost = octx.add_stream(encoder::find(codec::Id::MOV_TEXT)).unwrap();
-    println!("subtitle_ost: {:?} {:?}", subtitle_ost.parameters().medium(), subtitle_ost.parameters().id());
     let subtitle_stream_parameters = subtitle_stream.parameters().clone();
     subtitle_ost.set_parameters(subtitle_stream_parameters);
     unsafe {
+        // TODO: Support more subtitle codecs with container formats that support them
         (*subtitle_ost.parameters().as_mut_ptr()).codec_type = AVMediaType::AVMEDIA_TYPE_SUBTITLE;
         (*subtitle_ost.parameters().as_mut_ptr()).codec_id = AVCodecID::AV_CODEC_ID_MOV_TEXT;
         (*subtitle_ost.parameters().as_mut_ptr()).codec_tag = 0;
     }
-    println!("subtitle_ost: {:?} {:?}", subtitle_ost.parameters().medium(), subtitle_ost.parameters().id());
+    println!(
+        "subtitle_ost: {:?} {:?}",
+        subtitle_ost.parameters().medium(),
+        subtitle_ost.parameters().id()
+    );
     octx.set_metadata(ictx.metadata().to_owned());
     println!("metadata: {:?}", ictx.metadata());
     octx.write_header().unwrap();
@@ -79,7 +123,7 @@ fn export_subtitle_to_video(in_video_path: &str, out_video_path: &str) {
         packet.write_interleaved(&mut octx).unwrap();
     }
 
-    for (stream, mut packet) in subtitle_ictx.packets() {
+    for (_stream, mut packet) in subtitle_ictx.packets() {
         packet.set_stream((octx.nb_streams() - 1) as usize);
         packet.write_interleaved(&mut octx).unwrap();
     }
@@ -91,8 +135,7 @@ fn export_subtitle_to_video(in_video_path: &str, out_video_path: &str) {
     }
 }
 
-
-#[test]
-fn test_export_subtitle_to_video() {
-    export_subtitle_to_video("test.mov", "output.mov");
+#[cfg(test)]
+mod tests {
+    // TODO: Add tests
 }

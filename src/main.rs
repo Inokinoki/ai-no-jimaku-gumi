@@ -90,12 +90,12 @@ struct Args {
     #[arg(short, long, default_value = "srt")]
     subtitle_backend: String,
 
-    /// Subtitle output path (if srt)
+    /// Subtitle output path
     /// (default: "output.srt")
     /// (example: "output.srt")
-    /// (long_about: "Subtitle output path (if srt)")
-    #[arg(long, default_value = "output.srt")]
-    subtitle_output_path: String,
+    /// (long_about: "Subtitle output path (if srt) or video output path (if container or embedded)")
+    #[arg(long, default_value = None)]
+    subtitle_output_path: Option<String>,
 
     /// Translator backend
     /// (default: "deepl")
@@ -297,6 +297,7 @@ fn main() {
             input_video_path.to_string() + ".srt"
         } else {
             args.subtitle_output_path
+                .unwrap_or("output.srt".to_string())
         };
         let file = std::fs::File::create(tmp_path.as_str()).unwrap();
         let mut exporter = output::srt::SrtSubtitleExporter::new(file);
@@ -306,6 +307,14 @@ fn main() {
             // This might be confusing, but we return here to avoid any other post-processing
             println!("Done, translated subtitles saved to {}", tmp_path);
         }
+    } else if args.subtitle_backend == "container" {
+        // Save the translated subtitles to the video container (inplace if not specified)
+        let mut exporter = output::ffmpeg_subtitle::VideoSubtitleTrackExporter::new(
+            input_video_path.to_string(),
+            args.subtitle_output_path
+                .unwrap_or(input_video_path.to_string()),
+        );
+        exporter.output_subtitles(&subtitles);
     } else {
         println!("Unsupported subtitle backend now");
     }
