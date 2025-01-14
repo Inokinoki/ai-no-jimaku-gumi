@@ -106,7 +106,7 @@ Options:
   -s, --subtitle-backend <SUBTITLE_BACKEND>
           Subtitle backend (default: "srt") (possible values: "srt", "container", "embedded") (example: "srt") (long_about: "Subtitle backend to use") [default: srt]
       --subtitle-output-path <SUBTITLE_OUTPUT_PATH>
-          Subtitle output path (if srt) (default: "output.srt") (example: "output.srt") (long_about: "Subtitle output path (if srt)") [default: output.srt]
+          Subtitle output path (default: "None") (example: "output.srt") (long_about: "Subtitle output path (if srt) or video output path (if container or embedded)")
   -t, --translator-backend <TRANSLATOR_BACKEND>
           Translator backend (default: "deepl") (possible values: "deepl", "google", "llm", "whisper") (example: "google") (long_about: "Translator backend to use") [default: deepl]
       --llm-model-name <LLM_MODEL_NAME>
