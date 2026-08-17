@@ -17,6 +17,7 @@ exclude = [
 ]
 
 [dependencies]
+anyhow = "1.0"
 clap = { version = "4.5.23", features = ["derive"] }
 ffmpeg-next = "7.1.0"
 hound = "3.5.1"
