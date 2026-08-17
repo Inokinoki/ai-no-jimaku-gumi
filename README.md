@@ -54,7 +54,32 @@ You might need to install some other packages to enable GPU/NPU acceleration.
 
 ### Windows
 
-TODO
+1. Install [Visual Studio 2022](https://visualstudio.microsoft.com/) with the "Desktop development with C++" workload (MSVC toolchain) and [CMake](https://cmake.org/download/):
+
+    ```powershell
+    winget install Kitware.CMake
+    ```
+
+2. Install LLVM 17:
+
+    ```powershell
+    choco install -y llvm --version=17.0.6
+    ```
+
+    > Note: `bindgen` as currently pinned by `ffmpeg-sys-next` and `whisper-rs` (0.69/0.70) is not compatible with libclang 18+, so LLVM 17 is required for now.
+
+3. Since there is no pkg-config on Windows, download a prebuilt ffmpeg 7.1 shared development build (matching `ffmpeg-next` 7.1) and set the required environment variables:
+
+    ```powershell
+    Invoke-WebRequest https://github.com/GyanD/codexffmpeg/releases/download/7.1.1/ffmpeg-7.1.1-full_build-shared.zip -OutFile ffmpeg.zip
+    Expand-Archive ffmpeg.zip -DestinationPath C:\
+    [Environment]::SetEnvironmentVariable('FFMPEG_DIR', 'C:\ffmpeg-7.1.1-full_build-shared', 'User')
+    [Environment]::SetEnvironmentVariable('LIBCLANG_PATH', 'C:\Program Files\LLVM\bin', 'User')
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    [Environment]::SetEnvironmentVariable('Path', "$userPath;C:\ffmpeg-7.1.1-full_build-shared\bin", 'User')
+    ```
+
+    Adding the ffmpeg `bin` directory to `PATH` provides the ffmpeg DLLs at runtime. Start a new terminal (so the new variables are picked up) and `cargo build` works as usual.
 
 ## Build
 
