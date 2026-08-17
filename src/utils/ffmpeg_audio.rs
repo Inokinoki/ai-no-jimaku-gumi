@@ -3,7 +3,9 @@ use ffmpeg::format::sample::Type as SampleType;
 use ffmpeg::media::Type;
 use ffmpeg::software::resampling::context::Context as Resampler;
 use ffmpeg_next::{
-    self as ffmpeg, format,
+    self as ffmpeg,
+    ffi::AVChannelLayout,
+    format,
     frame::{self, Audio},
     util,
 };
@@ -96,6 +98,7 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
         .unwrap();
     println!("Input: {:?}", input.index());
     println!("Input codec: {}", input.parameters().id().name());
+    let audio_stream_index = input.index();
     let context_decoder =
         ffmpeg::codec::context::Context::from_parameters(input.parameters()).unwrap();
 
@@ -115,12 +118,26 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
     .unwrap();
 
     for (stream, packet) in ictx.packets() {
-        if stream.index() == 1 {
+        if stream.index() == audio_stream_index {
             // let mut decoded = Video::empty();
             // decoder.send_packet(&packet).unwrap();
             let mut decoded = frame::Audio::empty();
             decoder.send_packet(&packet).unwrap();
             while decoder.receive_frame(&mut decoded).is_ok() {
+                // Some containers (e.g. WAV) do not declare a channel layout,
+                // fill in the default one for the channel count, otherwise the
+                // resampler fails with "Input changed"
+                if decoded.channel_layout().is_empty() {
+                    let mut default_layout: AVChannelLayout = unsafe { std::mem::zeroed() };
+                    unsafe {
+                        ffmpeg::ffi::av_channel_layout_default(
+                            &mut default_layout,
+                            decoded.channels() as std::ffi::c_int,
+                        );
+                    }
+                    decoded.set_channel_layout(default_layout.into());
+                }
+
                 // Create resampler
                 let mut resampler = Resampler::get(
                     decoded.format(),
@@ -199,5 +216,8 @@ mod tests {
 
         extract_audio_from_video(video_path.as_str(), audio_path.as_str(), 16000);
         assert!(std::path::Path::new(audio_path.as_str()).exists());
+        // The extracted audio should not be empty
+        let reader = hound::WavReader::open(audio_path.as_str()).unwrap();
+        assert!(reader.duration() > 0);
     }
 }
