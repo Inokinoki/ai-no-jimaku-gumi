@@ -33,11 +33,13 @@ struct Args {
     #[arg(long, default_value = "en")]
     target_language: String,
 
-    /// Video start time (not used yet)
+    /// Video start time in seconds (only audio within [start, end) is transcribed)
+    /// (default: 0)
     #[arg(long, default_value = "0")]
     start_time: usize,
 
-    /// Video end time (not used yet)
+    /// Video end time in seconds (0 means until the end of the video)
+    /// (default: 0)
     #[arg(long, default_value = "0")]
     end_time: usize,
 
@@ -136,6 +138,10 @@ fn main() -> anyhow::Result<()> {
 
     println!("Hello, AI no jimaku gumi!");
 
+    if args.end_time != 0 && args.end_time <= args.start_time {
+        anyhow::bail!("end-time must be greater than start-time");
+    }
+
     let tmp_dir = TempDir::new().context("failed to create temporary directory")?;
     let tmp_path = tmp_dir.path().join("audio.wav");
     let tmp_path_str = tmp_path
@@ -144,7 +150,13 @@ fn main() -> anyhow::Result<()> {
         .context("temporary audio path is not valid UTF-8")?;
 
     if args.only_extract_audio {
-        utils::ffmpeg_audio::extract_audio_from_video(input_video_path, tmp_path_str, 16000);
+        utils::ffmpeg_audio::extract_audio_from_video(
+            input_video_path,
+            tmp_path_str,
+            16000,
+            args.start_time as f64,
+            args.end_time as f64,
+        );
 
         // Generate a random name for the audio file based on timestamp
         let tmp_path = {
@@ -161,7 +173,13 @@ fn main() -> anyhow::Result<()> {
     // Get the original subtitles
     let mut subtitles = match args.subtitle_source.as_str() {
         "audio" => {
-            utils::ffmpeg_audio::extract_audio_from_video(input_video_path, tmp_path_str, 16000);
+            utils::ffmpeg_audio::extract_audio_from_video(
+                input_video_path,
+                tmp_path_str,
+                16000,
+                args.start_time as f64,
+                args.end_time as f64,
+            );
             let state: whisper_rs::WhisperState = if args.translator_backend == "whisper" {
                 if target_language != "en" {
                     println!("Whisper only supports english translation");
@@ -193,6 +211,16 @@ fn main() -> anyhow::Result<()> {
     if subtitles.is_empty() {
         println!("No subtitles found");
         return Ok(());
+    }
+
+    // The extracted audio starts at start_time, so shift the timestamps
+    // back to the original video timeline
+    if args.start_time > 0 {
+        let offset = args.start_time as f32;
+        for subtitle in subtitles.iter_mut() {
+            subtitle.start += offset;
+            subtitle.end += offset;
+        }
     }
 
     if args.only_transcript {
