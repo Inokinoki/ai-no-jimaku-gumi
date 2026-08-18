@@ -186,8 +186,13 @@ fn main() -> anyhow::Result<()> {
             utils::whisper_state::create_subtitle_from_whisper_state(&state)
         }
         source => {
-            println!("Unsupported subtitle source now, {}", source);
-            return Ok(());
+            if source == "container" {
+                // Extract the existing subtitle track from the video container
+                utils::ffmpeg_subtitle_track::extract_subtitles_from_video(input_video_path)?
+            } else {
+                println!("Unsupported subtitle source now, {}", source);
+                return Ok(());
+            }
         }
     };
     if subtitles.is_empty() {

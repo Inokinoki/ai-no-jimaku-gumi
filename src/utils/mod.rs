@@ -1,4 +1,5 @@
 pub mod ffmpeg_audio;
+pub mod ffmpeg_subtitle_track;
 pub mod whisper_state;
 
 pub struct Subtitle {
