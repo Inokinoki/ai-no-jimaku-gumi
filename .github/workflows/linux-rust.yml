@@ -49,9 +49,10 @@ jobs:
 
     # bindgen as pinned by ffmpeg-sys-next/whisper-rs-sys (0.69/0.70) is not
     # compatible with libclang 18+, so install LLVM 17 explicitly
+    # (--allow-downgrade: the runner image ships a newer LLVM already)
     - name: Install LLVM 17
       shell: powershell
-      run: choco install -y llvm --version=17.0.6
+      run: choco install -y llvm --version=17.0.6 --allow-downgrade
 
     - name: Install ffmpeg dev build
       shell: powershell

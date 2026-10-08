@@ -113,9 +113,9 @@ Options:
       --target-language <TARGET_LANGUAGE>
           Which language to translate to (default: "en") (possible values: "en", "es", "fr", "de", "it", "ja", "ko", "pt", "ru", "zh") (example: "en") [default: en]
       --start-time <START_TIME>
-          Video start time (not used yet) [default: 0]
+          Video start time in seconds (only audio within [start, end) is transcribed) (default: 0) [default: 0]
       --end-time <END_TIME>
-          Video end time (not used yet) [default: 0]
+          Video end time in seconds (0 means until the end of the video) (default: 0) [default: 0]
       --subtitle-source <SUBTITLE_SOURCE>
           Subtitle source (default: "audio") (possible values: "audio", "container", "ocr") (example: "audio") (long_about: "Subtitle source to use") [default: audio]
       --ggml-model-path <GGML_MODEL_PATH>
