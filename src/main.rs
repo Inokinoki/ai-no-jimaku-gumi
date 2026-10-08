@@ -85,6 +85,13 @@ struct Args {
     #[arg(long)]
     only_translate: bool,
 
+    /// Merge subtitle segments that do not end a sentence into the next one before translating
+    /// (default: false)
+    /// (example: true)
+    /// (long_about: "Whisper may cut sentences in the middle of segments, translating the merged complete sentences improves the result")
+    #[arg(long)]
+    merge_incomplete_sentences: bool,
+
     /// Subtitle backend
     /// (default: "srt")
     /// (possible values: "srt", "container", "embedded")
@@ -244,6 +251,11 @@ fn main() -> anyhow::Result<()> {
         // Save transcripted subtitles and return
         println!("Done, transcripted subtitles saved to {}", tmp_path);
         return Ok(());
+    }
+
+    // Merge incomplete sentences before translating them in one piece
+    if args.merge_incomplete_sentences {
+        translate::merge_incomplete_sentences(&mut subtitles);
     }
 
     // Translate the subtitles
