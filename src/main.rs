@@ -204,8 +204,13 @@ fn main() -> anyhow::Result<()> {
             utils::whisper_state::create_subtitle_from_whisper_state(&state)
         }
         source => {
-            println!("Unsupported subtitle source now, {}", source);
-            return Ok(());
+            if source == "container" {
+                // Extract the existing subtitle track from the video container
+                utils::ffmpeg_subtitle_track::extract_subtitles_from_video(input_video_path)?
+            } else {
+                println!("Unsupported subtitle source now, {}", source);
+                return Ok(());
+            }
         }
     };
     if subtitles.is_empty() {
@@ -214,8 +219,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     // The extracted audio starts at start_time, so shift the timestamps
-    // back to the original video timeline
-    if args.start_time > 0 {
+    // back to the original video timeline. Subtitles taken from the
+    // container are already on that timeline.
+    if args.start_time > 0 && args.subtitle_source == "audio" {
         let offset = args.start_time as f32;
         for subtitle in subtitles.iter_mut() {
             subtitle.start += offset;

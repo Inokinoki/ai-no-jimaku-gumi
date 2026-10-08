@@ -148,6 +148,11 @@ Options:
 
 We are currently supporting only `deepl`, `llm`, `whisper` translation and `srt` export.
 
+### Subtitle source
+
+- `audio` (default): transcribe the audio track using Whisper.
+- `container`: extract the existing subtitle track from the video container (text based tracks only).
+
 ### Translator backend
 
 You might need to follow the specific instructions to use a translator backend:

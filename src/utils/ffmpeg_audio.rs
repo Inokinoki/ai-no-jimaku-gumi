@@ -3,9 +3,7 @@ use ffmpeg::format::sample::Type as SampleType;
 use ffmpeg::media::Type;
 use ffmpeg::software::resampling::context::Context as Resampler;
 use ffmpeg_next::{
-    self as ffmpeg,
-    ffi::AVChannelLayout,
-    format,
+    self as ffmpeg, format,
     frame::{self, Audio},
     util,
 };
@@ -143,8 +141,7 @@ pub fn extract_audio_from_video(
             });
             if let Some(time) = packet_time {
                 let packet_duration = if packet.duration() > 0 {
-                    packet.duration() as f64
-                        * time_base.numerator() as f64
+                    packet.duration() as f64 * time_base.numerator() as f64
                         / time_base.denominator() as f64
                 } else {
                     0.0
@@ -168,14 +165,9 @@ pub fn extract_audio_from_video(
                 // fill in the default one for the channel count, otherwise the
                 // resampler fails with "Input changed"
                 if decoded.channel_layout().is_empty() {
-                    let mut default_layout: AVChannelLayout = unsafe { std::mem::zeroed() };
-                    unsafe {
-                        ffmpeg::ffi::av_channel_layout_default(
-                            &mut default_layout,
-                            decoded.channels() as std::ffi::c_int,
-                        );
-                    }
-                    decoded.set_channel_layout(default_layout.into());
+                    decoded.set_channel_layout(util::channel_layout::ChannelLayout::default(
+                        decoded.channels() as i32,
+                    ));
                 }
 
                 // Create resampler

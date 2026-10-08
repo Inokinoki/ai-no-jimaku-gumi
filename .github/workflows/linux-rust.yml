@@ -37,6 +37,9 @@ jobs:
     env:
       FFMPEG_DIR: C:\ffmpeg-7.1.1-full_build-shared
       LIBCLANG_PATH: C:\Program Files\LLVM\bin
+      # The runner ships Visual Studio 18 (2026), which the cc crate (as used
+      # by cmake-rs to pick a generator) cannot detect yet, so name it here
+      CMAKE_GENERATOR: Visual Studio 18 2026
 
     steps:
     - uses: actions/checkout@v4
@@ -49,9 +52,10 @@ jobs:
 
     # bindgen as pinned by ffmpeg-sys-next/whisper-rs-sys (0.69/0.70) is not
     # compatible with libclang 18+, so install LLVM 17 explicitly
+    # (--allow-downgrade: the runner image ships a newer LLVM already)
     - name: Install LLVM 17
       shell: powershell
-      run: choco install -y llvm --version=17.0.6
+      run: choco install -y llvm --version=17.0.6 --allow-downgrade
 
     - name: Install ffmpeg dev build
       shell: powershell
