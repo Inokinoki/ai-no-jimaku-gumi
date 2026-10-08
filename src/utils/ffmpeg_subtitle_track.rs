@@ -156,18 +156,11 @@ mod tests {
             .unwrap()
             .to_string();
 
-        // Use reqwest to download a sample audio as video
-        if !Path::new(input_video_path.as_str()).exists() {
-            tokio::runtime::Runtime::new().unwrap().block_on(async {
-                let response = reqwest::get(
-                    "https://github.com/ggerganov/whisper.cpp/raw/master/samples/jfk.wav",
-                )
-                .await
-                .unwrap();
-                let bytes = response.bytes().await.unwrap();
-                std::fs::write(input_video_path.as_str(), bytes).unwrap();
-            });
-        }
+        // Download a sample audio to use as video (serialized across tests)
+        super::super::test_support::ensure_sample_file(
+            input_video_path.as_str(),
+            "https://github.com/ggerganov/whisper.cpp/raw/master/samples/jfk.wav",
+        );
 
         input_video_path
     }
