@@ -9,8 +9,11 @@ pub fn create_subtitle_from_whisper_state(state: &WhisperState) -> Vec<Subtitle>
 
     let mut subtitles = Vec::new();
     for i in 0..num_segments {
+        // Some models have broken vocabulary entries and emit segments with
+        // invalid UTF-8, take the text lossily (with replacement characters)
+        // instead of failing the whole transcription
         let segment = state
-            .full_get_segment_text(i)
+            .full_get_segment_text_lossy(i)
             .expect("failed to get segment");
         let start_timestamp = state
             .full_get_segment_t0(i)
