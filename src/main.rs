@@ -1,3 +1,4 @@
+use anyhow::Context;
 use clap::Parser;
 
 mod output;
@@ -32,11 +33,13 @@ struct Args {
     #[arg(long, default_value = "en")]
     target_language: String,
 
-    /// Video start time (not used yet)
+    /// Video start time in seconds (only audio within [start, end) is transcribed)
+    /// (default: 0)
     #[arg(long, default_value = "0")]
     start_time: usize,
 
-    /// Video end time (not used yet)
+    /// Video end time in seconds (0 means until the end of the video)
+    /// (default: 0)
     #[arg(long, default_value = "0")]
     end_time: usize,
 
@@ -127,7 +130,7 @@ struct Args {
     llm_prompt: String,
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let input_video_path = args.input_video_path.as_str();
     let source_language = args.source_language;
@@ -135,12 +138,25 @@ fn main() {
 
     println!("Hello, AI no jimaku gumi!");
 
-    let tmp_dir = TempDir::new().unwrap();
+    if args.end_time != 0 && args.end_time <= args.start_time {
+        anyhow::bail!("end-time must be greater than start-time");
+    }
+
+    let tmp_dir = TempDir::new().context("failed to create temporary directory")?;
     let tmp_path = tmp_dir.path().join("audio.wav");
-    let tmp_path_str = tmp_path.as_os_str().to_str().unwrap();
+    let tmp_path_str = tmp_path
+        .as_os_str()
+        .to_str()
+        .context("temporary audio path is not valid UTF-8")?;
 
     if args.only_extract_audio {
-        utils::ffmpeg_audio::extract_audio_from_video(input_video_path, tmp_path_str, 16000);
+        utils::ffmpeg_audio::extract_audio_from_video(
+            input_video_path,
+            tmp_path_str,
+            16000,
+            args.start_time as f64,
+            args.end_time as f64,
+        );
 
         // Generate a random name for the audio file based on timestamp
         let tmp_path = {
@@ -148,19 +164,26 @@ fn main() {
             format!("{}.audio.{}.wav", args.input_video_path, timestamp)
         };
         // Copy the audio to the output path
-        std::fs::copy(tmp_path_str, tmp_path.as_str()).unwrap();
+        std::fs::copy(tmp_path_str, tmp_path.as_str())
+            .with_context(|| format!("failed to save audio to {}", tmp_path))?;
         println!("Done, audio extracted to {}", tmp_path);
-        return;
+        return Ok(());
     }
 
     // Get the original subtitles
     let mut subtitles = match args.subtitle_source.as_str() {
         "audio" => {
-            utils::ffmpeg_audio::extract_audio_from_video(input_video_path, tmp_path_str, 16000);
+            utils::ffmpeg_audio::extract_audio_from_video(
+                input_video_path,
+                tmp_path_str,
+                16000,
+                args.start_time as f64,
+                args.end_time as f64,
+            );
             let state: whisper_rs::WhisperState = if args.translator_backend == "whisper" {
                 if target_language != "en" {
                     println!("Whisper only supports english translation");
-                    return;
+                    return Ok(());
                 }
 
                 // Transribe and translate the audio into subtitle directly (english only)
@@ -182,12 +205,22 @@ fn main() {
         }
         source => {
             println!("Unsupported subtitle source now, {}", source);
-            return;
+            return Ok(());
         }
     };
     if subtitles.is_empty() {
         println!("No subtitles found");
-        return;
+        return Ok(());
+    }
+
+    // The extracted audio starts at start_time, so shift the timestamps
+    // back to the original video timeline
+    if args.start_time > 0 {
+        let offset = args.start_time as f32;
+        for subtitle in subtitles.iter_mut() {
+            subtitle.start += offset;
+            subtitle.end += offset;
+        }
     }
 
     if args.only_transcript {
@@ -195,15 +228,16 @@ fn main() {
         let tmp_path = if args.original_subtitle_path.is_empty() {
             input_video_path.to_string() + ".srt"
         } else {
-            args.original_subtitle_path
+            args.original_subtitle_path.clone()
         };
-        let file = std::fs::File::create(tmp_path.as_str()).unwrap();
+        let file = std::fs::File::create(tmp_path.as_str())
+            .with_context(|| format!("failed to create subtitle file {}", tmp_path))?;
         let mut exporter = output::srt::SrtSubtitleExporter::new(file);
         exporter.output_subtitles(&subtitles);
 
         // Save transcripted subtitles and return
         println!("Done, transcripted subtitles saved to {}", tmp_path);
-        return;
+        return Ok(());
     }
 
     // Translate the subtitles
@@ -219,33 +253,34 @@ fn main() {
                         "Unsupported translator backend for the given input source now, {}",
                         source
                     );
-                    return;
+                    return Ok(());
                 }
             };
         }
         "deepl" => {
-            let deepl_api_key = std::env::var("DEEPL_API_KEY").unwrap();
+            let deepl_api_key = std::env::var("DEEPL_API_KEY").unwrap_or_default();
             if deepl_api_key.is_empty() {
                 println!("DEEPL_API_KEY is not set");
-                return;
+                return Ok(());
             }
 
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            subtitles.iter_mut().for_each(|s| {
-                s.text = rt
-                    .block_on(translate::deepl::translate_text(
-                        deepl_api_key.as_str(),
-                        vec![s.text.as_str()],
-                        target_language.as_str(),
-                        Some(source_language.as_str()),
-                    ))
-                    .unwrap();
-            });
+            let rt = tokio::runtime::Runtime::new().context("failed to create tokio runtime")?;
+            let texts: Vec<&str> = subtitles.iter().map(|s| s.text.as_str()).collect();
+            let translated = rt.block_on(translate::deepl::translate_texts(
+                deepl_api_key.as_str(),
+                texts,
+                target_language.as_str(),
+                Some(source_language.as_str()),
+            ))?;
+            subtitles
+                .iter_mut()
+                .zip(translated)
+                .for_each(|(s, text)| s.text = text);
         }
         "llm" => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
+            let rt = tokio::runtime::Runtime::new().context("failed to create tokio runtime")?;
             let model_name = args.llm_model_name.clone();
-            let api_base = args.llm_api_base;
+            let api_base = args.llm_api_base.clone();
             let model_name_clone = model_name.clone();
 
             let client = if !api_base.is_empty() {
@@ -273,21 +308,22 @@ fn main() {
                     &target_language
                 )
             };
-            subtitles.iter_mut().for_each(|s| {
-                s.text = rt
-                    .block_on(translate::llm::translate_text(
-                        &client,
-                        &model_name,
-                        &system_prompt,
-                        vec![s.text.as_str()],
-                    ))
-                    .unwrap();
-            });
+            let texts: Vec<String> = subtitles.iter().map(|s| s.text.clone()).collect();
+            let translated = rt.block_on(translate::llm::translate_texts(
+                &client,
+                &model_name,
+                &system_prompt,
+                &texts,
+            ))?;
+            subtitles
+                .iter_mut()
+                .zip(translated)
+                .for_each(|(s, text)| s.text = text);
         }
         // more translators can be added here
         translator => {
             println!("Unsupported translator backend now {}", translator);
-            return;
+            return Ok(());
         }
     }
 
@@ -297,9 +333,11 @@ fn main() {
             input_video_path.to_string() + ".srt"
         } else {
             args.subtitle_output_path
+                .clone()
                 .unwrap_or("output.srt".to_string())
         };
-        let file = std::fs::File::create(tmp_path.as_str()).unwrap();
+        let file = std::fs::File::create(tmp_path.as_str())
+            .with_context(|| format!("failed to create subtitle file {}", tmp_path))?;
         let mut exporter = output::srt::SrtSubtitleExporter::new(file);
         exporter.output_subtitles(&subtitles);
 
@@ -312,10 +350,13 @@ fn main() {
         let mut exporter = output::ffmpeg_subtitle::VideoSubtitleTrackExporter::new(
             input_video_path.to_string(),
             args.subtitle_output_path
+                .clone()
                 .unwrap_or(input_video_path.to_string()),
         );
         exporter.output_subtitles(&subtitles);
     } else {
         println!("Unsupported subtitle backend now");
     }
+
+    Ok(())
 }

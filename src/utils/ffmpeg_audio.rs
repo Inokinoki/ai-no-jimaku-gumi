@@ -3,7 +3,9 @@ use ffmpeg::format::sample::Type as SampleType;
 use ffmpeg::media::Type;
 use ffmpeg::software::resampling::context::Context as Resampler;
 use ffmpeg_next::{
-    self as ffmpeg, format,
+    self as ffmpeg,
+    ffi::AVChannelLayout,
+    format,
     frame::{self, Audio},
     util,
 };
@@ -74,8 +76,16 @@ fn retrieve_f32_audio_samples(decoded: &frame::Audio, plane: usize) -> Vec<f32> 
     converted_samples
 }
 
-// Extract audio from video using ffmpeg-next
-pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sample_rate: u32) {
+// Extract audio from video using ffmpeg-next.
+// Only the audio within [start_time, end_time) (in seconds) is extracted,
+// an end_time less than or equal to 0 means until the end of the video.
+pub fn extract_audio_from_video(
+    video_path: &str,
+    audio_path: &str,
+    output_sample_rate: u32,
+    start_time: f64,
+    end_time: f64,
+) {
     ffmpeg::init().unwrap();
 
     let mut ictx = input(video_path).unwrap();
@@ -96,6 +106,7 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
         .unwrap();
     println!("Input: {:?}", input.index());
     println!("Input codec: {}", input.parameters().id().name());
+    let audio_stream_index = input.index();
     let context_decoder =
         ffmpeg::codec::context::Context::from_parameters(input.parameters()).unwrap();
 
@@ -114,13 +125,59 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
     )
     .unwrap();
 
-    for (stream, packet) in ictx.packets() {
-        if stream.index() == 1 {
+    // Number of samples to write at most (unlimited when no end time is given)
+    let max_written_samples = if end_time > 0.0 {
+        ((end_time - start_time).max(0.0) * output_sample_rate as f64).ceil() as u64
+    } else {
+        u64::MAX
+    };
+    let mut written_samples: u64 = 0;
+    let time_base = input.time_base();
+
+    'packets: for (stream, packet) in ictx.packets() {
+        if stream.index() == audio_stream_index {
+            // Position of the packet in seconds, used to skip audio before the
+            // requested start time and to stop once past the requested end time
+            let packet_time = packet.pts().or_else(|| packet.dts()).map(|ts| {
+                ts as f64 * time_base.numerator() as f64 / time_base.denominator() as f64
+            });
+            if let Some(time) = packet_time {
+                let packet_duration = if packet.duration() > 0 {
+                    packet.duration() as f64
+                        * time_base.numerator() as f64
+                        / time_base.denominator() as f64
+                } else {
+                    0.0
+                };
+                // Skip packets that end before the requested start time
+                if time + packet_duration < start_time {
+                    continue;
+                }
+                // Stop once a packet starts at or after the requested end time
+                if end_time > 0.0 && time >= end_time {
+                    break 'packets;
+                }
+            }
+
             // let mut decoded = Video::empty();
             // decoder.send_packet(&packet).unwrap();
             let mut decoded = frame::Audio::empty();
             decoder.send_packet(&packet).unwrap();
             while decoder.receive_frame(&mut decoded).is_ok() {
+                // Some containers (e.g. WAV) do not declare a channel layout,
+                // fill in the default one for the channel count, otherwise the
+                // resampler fails with "Input changed"
+                if decoded.channel_layout().is_empty() {
+                    let mut default_layout: AVChannelLayout = unsafe { std::mem::zeroed() };
+                    unsafe {
+                        ffmpeg::ffi::av_channel_layout_default(
+                            &mut default_layout,
+                            decoded.channels() as std::ffi::c_int,
+                        );
+                    }
+                    decoded.set_channel_layout(default_layout.into());
+                }
+
                 // Create resampler
                 let mut resampler = Resampler::get(
                     decoded.format(),
@@ -146,7 +203,11 @@ pub fn extract_audio_from_video(video_path: &str, audio_path: &str, output_sampl
                 let resampled_samples = retrieve_f32_audio_samples(&output_frame, plane);
 
                 for sample in resampled_samples {
+                    if written_samples >= max_written_samples {
+                        break 'packets;
+                    }
                     writer.write_sample(sample).unwrap();
+                    written_samples += 1;
                 }
                 writer.flush().unwrap();
             }
@@ -197,7 +258,54 @@ mod tests {
     fn test_extract_audio_from_video() {
         let (video_path, audio_path) = setup();
 
-        extract_audio_from_video(video_path.as_str(), audio_path.as_str(), 16000);
+        extract_audio_from_video(video_path.as_str(), audio_path.as_str(), 16000, 0.0, 0.0);
         assert!(std::path::Path::new(audio_path.as_str()).exists());
+        // The extracted audio should not be empty
+        let reader = hound::WavReader::open(audio_path.as_str()).unwrap();
+        assert!(reader.duration() > 0);
+    }
+
+    #[test]
+    fn test_extract_audio_from_video_with_time_range() {
+        let (video_path, _) = setup();
+        let audio_path = Path::new("data")
+            .join("utils")
+            .join("audio_trimmed.wav")
+            .as_os_str()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        // jfk.wav is about 11 seconds long, keep [1s, 2s)
+        extract_audio_from_video(video_path.as_str(), audio_path.as_str(), 16000, 1.0, 2.0);
+        let reader = hound::WavReader::open(audio_path.as_str()).unwrap();
+        let duration_seconds = reader.duration() as f64 / reader.spec().sample_rate as f64;
+        assert!(
+            duration_seconds > 0.5 && duration_seconds < 2.0,
+            "unexpected trimmed duration {}",
+            duration_seconds
+        );
+    }
+
+    #[test]
+    fn test_extract_audio_from_video_from_offset_to_end() {
+        let (video_path, _) = setup();
+        let audio_path = Path::new("data")
+            .join("utils")
+            .join("audio_from_10s.wav")
+            .as_os_str()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        // jfk.wav is about 11 seconds long, keep [10s, end)
+        extract_audio_from_video(video_path.as_str(), audio_path.as_str(), 16000, 10.0, 0.0);
+        let reader = hound::WavReader::open(audio_path.as_str()).unwrap();
+        let duration_seconds = reader.duration() as f64 / reader.spec().sample_rate as f64;
+        assert!(
+            duration_seconds > 0.5 && duration_seconds < 2.0,
+            "unexpected offset duration {}",
+            duration_seconds
+        );
     }
 }

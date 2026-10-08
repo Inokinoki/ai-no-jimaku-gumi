@@ -1,6 +1,6 @@
+use anyhow::{anyhow, Result};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 
 #[derive(Serialize)]
 struct TranslateRequest<'a> {
@@ -19,52 +19,66 @@ struct Translation {
     text: String,
 }
 
-async fn _translate_text(
+// DeepL docs recommend keeping requests below  128 KiB,
+// so send at most this many subtitle lines per request
+const BATCH_SIZE: usize = 100;
+
+async fn _translate_texts(
     base_url: &str,
     path: &str,
     api_key: &str,
     texts: Vec<&str>,
     target_lang: &str,
     source_lang: Option<&str>,
-) -> Result<String, Box<dyn Error>> {
+) -> Result<Vec<String>> {
     let client = Client::new();
-    let request_body = TranslateRequest {
-        text: texts,
-        source_lang,
-        target_lang,
-    };
-    let response: reqwest::Response = client
-        .post(format!("{}{}", base_url, path))
-        .header("Content-Type", "application/json")
-        .header("Authorization", format!("DeepL-Auth-Key {}", api_key))
-        .json(&request_body)
-        .send()
-        .await?;
+    let mut all_translations = Vec::with_capacity(texts.len());
+    for batch in texts.chunks(BATCH_SIZE) {
+        let request_body = TranslateRequest {
+            text: batch.to_vec(),
+            source_lang,
+            target_lang,
+        };
+        let response: reqwest::Response = client
+            .post(format!("{}{}", base_url, path))
+            .header("Content-Type", "application/json")
+            .header("Authorization", format!("DeepL-Auth-Key {}", api_key))
+            .json(&request_body)
+            .send()
+            .await?;
 
-    if response.status().is_success() {
-        let translate_response: TranslateResponse = response.json().await?;
-        if let Some(translation) = translate_response.translations.first() {
-            Ok(translation.text.clone())
+        if response.status().is_success() {
+            let translate_response: TranslateResponse = response.json().await?;
+            if translate_response.translations.len() != batch.len() {
+                return Err(anyhow!(
+                    "Unexpected number of translations: expected {}, got {}",
+                    batch.len(),
+                    translate_response.translations.len()
+                ));
+            }
+            all_translations.extend(translate_response.translations.into_iter().map(|t| t.text));
         } else {
-            Err("No translation found".into())
+            return Err(anyhow!(
+                "Failed to translate text: {:?}",
+                response.text().await?
+            ));
         }
-    } else {
-        Err(format!("Failed to translate text: {:?}", response.text().await?).into())
     }
+    Ok(all_translations)
 }
 
-pub async fn translate_text(
+pub async fn translate_texts(
     api_key: &str,
     texts: Vec<&str>,
     target_lang: &str,
     source_lang: Option<&str>,
-) -> Result<String, Box<dyn Error>> {
+) -> Result<Vec<String>> {
     let base_url =
         std::env::var("DEEPL_API_URL").unwrap_or("https://api-free.deepl.com".to_string());
     let path_url = std::env::var("DEEPL_API_URL_PATH").unwrap_or("/v2/translate".to_string());
     let deepl_source_lang = get_deepl_source_language(source_lang);
     let deepl_target_lang = get_deepl_target_language(target_lang);
-    _translate_text(
+    _translate_texts(
         &base_url,
         &path_url,
         api_key,
@@ -126,7 +140,7 @@ mod tests {
         // Create a runtime to block on the asynchronous function
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(async {
-            _translate_text(
+            _translate_texts(
                 server.url().as_str(),
                 "/v2/translate",
                 api_key,
@@ -139,6 +153,45 @@ mod tests {
 
         // Assert the result
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "Hallo Welt");
+        assert_eq!(result.unwrap(), vec!["Hallo Welt"]);
+    }
+
+    #[test]
+    fn test_translate_texts_multiple_in_order() {
+        let mut server = Server::new();
+        let _m = server
+            .mock("POST", "/v2/translate")
+            .match_header("Content-Type", "application/json")
+            .match_header("Authorization", "DeepL-Auth-Key test_api_key")
+            .match_body(
+                r#"{"text":["Hello World","Goodbye World"],"source_lang":"EN","target_lang":"DE"}"#,
+            )
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                r#"{"translations":[{"text":"Hallo Welt"},{"text":"Auf Wiedersehen Welt"}]}"#,
+            )
+            .create();
+
+        let api_key = "test_api_key";
+        let texts = vec!["Hello World", "Goodbye World"];
+        let target_lang = "DE";
+        let source_lang = Some("EN");
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(async {
+            _translate_texts(
+                server.url().as_str(),
+                "/v2/translate",
+                api_key,
+                texts,
+                target_lang,
+                source_lang,
+            )
+            .await
+        });
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), vec!["Hallo Welt", "Auf Wiedersehen Welt"]);
     }
 }

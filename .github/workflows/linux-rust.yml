@@ -1,4 +1,4 @@
-name: Build and test on Linux
+name: Build and test
 
 on:
   push:
@@ -21,9 +21,44 @@ jobs:
       with:
         toolchain: stable
         override: true
-    
+
     - name: Install dependencies
       run: sudo apt update && sudo apt-get install -y clang cmake make pkg-config libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev libavfilter-dev libpostproc-dev libswresample-dev
+
+    - name: Build
+      run: cargo build --verbose
+
+    - name: Test
+      run: cargo test --verbose
+
+  windows-latest:
+    runs-on: windows-latest
+
+    env:
+      FFMPEG_DIR: C:\ffmpeg-7.1.1-full_build-shared
+      LIBCLANG_PATH: C:\Program Files\LLVM\bin
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    # bindgen as pinned by ffmpeg-sys-next/whisper-rs-sys (0.69/0.70) is not
+    # compatible with libclang 18+, so install LLVM 17 explicitly
+    - name: Install LLVM 17
+      shell: powershell
+      run: choco install -y llvm --version=17.0.6
+
+    - name: Install ffmpeg dev build
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri https://github.com/GyanD/codexffmpeg/releases/download/7.1.1/ffmpeg-7.1.1-full_build-shared.zip -OutFile ffmpeg.zip
+        Expand-Archive ffmpeg.zip -DestinationPath C:\
+        Add-Content $env:GITHUB_PATH "$env:FFMPEG_DIR\bin"
 
     - name: Build
       run: cargo build --verbose
