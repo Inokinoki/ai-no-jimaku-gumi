@@ -48,7 +48,7 @@ fn export_subtitle_to_video(in_video_path: &str, out_video_path: &str, subtitle_
 
     let in_place = in_video_path == out_video_path;
     let output_file = if in_place {
-        format!("{}.tmp", in_video_path)
+        super::temp_sibling(in_video_path)
     } else {
         out_video_path.to_string()
     };
