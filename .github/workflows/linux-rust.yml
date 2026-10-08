@@ -37,6 +37,9 @@ jobs:
     env:
       FFMPEG_DIR: C:\ffmpeg-7.1.1-full_build-shared
       LIBCLANG_PATH: C:\Program Files\LLVM\bin
+      # The runner ships Visual Studio 18 (2026), which the cc crate (as used
+      # by cmake-rs to pick a generator) cannot detect yet, so name it here
+      CMAKE_GENERATOR: Visual Studio 18 2026
 
     steps:
     - uses: actions/checkout@v4
