@@ -372,6 +372,18 @@ fn main() -> anyhow::Result<()> {
                 .unwrap_or(input_video_path.to_string()),
         );
         exporter.output_subtitles(&subtitles);
+    } else if args.subtitle_backend == "embedded" {
+        // Burn the translated subtitles into the video (inplace if not specified)
+        let mut exporter = output::ffmpeg_embedded::HardSubtitleVideoExporter::new(
+            input_video_path.to_string(),
+            args.subtitle_output_path
+                .clone()
+                .unwrap_or(input_video_path.to_string()),
+        );
+        println!(
+            "Burning subtitles into the video, this re-encodes the video and can take a while"
+        );
+        exporter.output_subtitles(&subtitles);
     } else {
         println!("Unsupported subtitle backend now");
     }

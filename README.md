@@ -148,12 +148,18 @@ Options:
           Print version
 ```
 
-We are currently supporting only `deepl`, `llm`, `whisper` translation and `srt` export.
+We are currently supporting only `deepl`, `llm`, `whisper` translation and `srt`, `container`, `embedded` export.
 
 ### Subtitle source
 
 - `audio` (default): transcribe the audio track using Whisper.
 - `container`: extract the existing subtitle track from the video container (text based tracks only).
+
+### Subtitle backend
+
+- `srt` (default): export the subtitles as an SRT file.
+- `container`: add the subtitles as a subtitle track to the video container (in place if `--subtitle-output-path` is not given).
+- `embedded`: burn the subtitles into the video image (re-encodes the video as H.264, needs fonts installed on the system, in place if `--subtitle-output-path` is not given).
 
 ### Translator backend
 
